@@ -1,0 +1,73 @@
+package com.staynest.frontdesk.controller;
+
+import com.staynest.frontdesk.dto.ApiResponse;
+import com.staynest.frontdesk.dto.CheckInRequest;
+import com.staynest.frontdesk.dto.FolioItemRequest;
+import com.staynest.frontdesk.dto.StayRecordResponse;
+import com.staynest.frontdesk.service.StayRecordService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/stay-records")
+@RequiredArgsConstructor
+public class StayRecordController {
+
+    private final StayRecordService stayRecordService;
+
+    @PostMapping("/checkin")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
+    public ResponseEntity<ApiResponse<StayRecordResponse>> checkIn(@Valid @RequestBody CheckInRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Check-in successful", stayRecordService.checkIn(request)));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'REVENUEMANAGER')")
+    public ResponseEntity<ApiResponse<List<StayRecordResponse>>> getAll(
+            @RequestParam(required = false) Integer guestId,
+            @RequestParam(required = false) String status) {
+        if (guestId != null) {
+            return ResponseEntity.ok(ApiResponse.success(stayRecordService.getStaysByGuestId(guestId)));
+        }
+        if (status != null) {
+            return ResponseEntity.ok(ApiResponse.success(stayRecordService.getStaysByStatus(status)));
+        }
+        return ResponseEntity.ok(ApiResponse.success(stayRecordService.getAllStays()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<StayRecordResponse>> getById(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success(stayRecordService.getStayById(id)));
+    }
+
+    @PostMapping("/{id}/folio-items")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'FBMANAGER')")
+    public ResponseEntity<ApiResponse<StayRecordResponse>> addFolioItem(
+            @PathVariable Integer id,
+            @Valid @RequestBody FolioItemRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Folio item added", stayRecordService.postFolioItem(id, request)));
+    }
+
+    @GetMapping("/{id}/folio-items")
+    public ResponseEntity<ApiResponse<List<com.staynest.frontdesk.dto.FolioItemResponse>>> getFolioItems(
+            @PathVariable Integer id) {
+        // This will be handled by FolioItemController, kept here for convenience
+        return ResponseEntity.ok(ApiResponse.success(List.of()));
+    }
+
+    @PostMapping("/{id}/checkout")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
+    public ResponseEntity<ApiResponse<StayRecordResponse>> checkOut(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success("Check-out successful", stayRecordService.checkOut(id)));
+    }
+}

@@ -1,0 +1,63 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: iam-service
+              uri: lb://IAM-SERVICE
+              predicates:
+              - Path=/api/auth/**,/api/users/**,/api/audit-logs/**
+        
+            - id: room-service
+              uri: lb://ROOM-SERVICE
+              predicates:
+                - Path=/api/room-types/**,/api/rooms/**,/api/rate-plans/**,/api/hospitality-reports/**
+          
+            - id: reservation-service
+              uri: lb://RESERVATION-SERVICE
+              predicates:
+                - Path=/api/guests/**,/api/reservations/**
+            
+            - id: frontdesk-service
+              uri: lb://frontdesk-service
+              predicates:
+                - Path=/api/stay-records/**,/api/folio-items/**
+            
+            - id: housekeeping-service
+              uri: lb://housekeeping-service
+              predicates:
+                - Path=/api/housekeeping-tasks/**,/api/maintenance-requests/**
+            
+            - id: fb-service
+              uri: lb://fb-service
+              predicates:
+                - Path=/api/menu-items/**,/api/fb-orders/**,/api/dining-reservations/**
+            
+            - id: revenue-service
+              uri: lb://revenue-service
+              predicates:
+                - Path=/api/reports/**
+            
+            - id: notification-service
+              uri: lb://NOTIFICATION-SERVICE
+              predicates:
+                - Path=/api/notifications/**
+  
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG

@@ -1,0 +1,32 @@
+#spring.application.name=housekeeping-service
+
+server:
+  port: 8085
+
+spring:
+  application:
+    name: housekeeping-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/housekeeping_db
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+jwt:
+  secret: staynest-secret-key-for-jwt-signing-2026
+  expiration: 86400000

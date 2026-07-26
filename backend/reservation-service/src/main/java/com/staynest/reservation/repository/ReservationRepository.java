@@ -1,0 +1,17 @@
+package com.staynest.reservation.repository;
+
+import com.staynest.reservation.entity.Reservation;
+import com.staynest.reservation.enums.ReservationStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Repository
+public interface ReservationRepository extends JpaRepository<Reservation, Integer> {
+    List<Reservation> findByGuest_GuestId(Integer guestId);
+    List<Reservation> findByStatus(ReservationStatus status);
+    List<Reservation> findByCheckInDate(LocalDate checkInDate);
+    List<Reservation> findByCheckInDateBetween(LocalDate start, LocalDate end);
+}

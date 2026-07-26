@@ -1,0 +1,21 @@
+# Maven target directory (build output)
+**/target/
+**/*.class
+
+# Eclipse / STS / IntelliJ
+.metadata/
+**/.idea/
+**/*.iml
+**/.classpath
+**/.project
+**/.settings/
+**/.factorypath
+
+# Logs & System Files
+*.log
+.DS_Store
+Thumbs.db
+
+# Secret files
+**/*.env
+**/application-secrets.yml
