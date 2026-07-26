@@ -1,0 +1,83 @@
+# ==========================================
+# 1. FRONTEND EXCLUSIONS (Node.js / Vite / React)
+# ==========================================
+**/node_modules/
+**/dist/
+**/build/
+**/.vite/
+**/coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# 2. BACKEND EXCLUSIONS (Maven / Java / Spring)
+# ==========================================
+**/target/
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+
+# Gradle (just in case)
+**/.gradle/
+**/build/
+
+# ==========================================
+# 3. IDE & EDITOR CONFIGURATIONS
+# ==========================================
+# Eclipse & Spring Tool Suite (STS)
+.metadata/
+**/.classpath
+**/.project
+**/.settings/
+**/.factorypath
+
+# IntelliJ IDEA
+**/.idea/
+**/*.iml
+**/*.iws
+**/*.ipr
+
+# Visual Studio Code
+**/.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ==========================================
+# 4. OS & SYSTEM FILES
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+*.bak
+*.swp
+
+# ==========================================
+# 5. SECRETS & ENVIRONMENT VARIABLES (CRITICAL)
+# ==========================================
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+**/application-secrets.yml
+**/application-secrets.properties
+**/*.pem
+**/*.key
+**/*.keystore
+**/*.jks
+
+# ==========================================
+# 6. LOGS & TEMP FILES
+# ==========================================
+*.log
+**/logs/
