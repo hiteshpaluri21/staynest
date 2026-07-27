@@ -25,14 +25,14 @@ public class ReservationController {
     private final ReservationService reservationService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'GUEST')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ReservationResponse>> create(@Valid @RequestBody ReservationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Reservation created", reservationService.createReservation(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'REVENUEMANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ReservationResponse>>> getAll(
             @RequestParam(required = false) Integer guestId,
             @RequestParam(required = false) ReservationStatus status) {
@@ -43,6 +43,13 @@ public class ReservationController {
             return ResponseEntity.ok(ApiResponse.success(reservationService.getReservationsByStatus(status)));
         }
         return ResponseEntity.ok(ApiResponse.success(reservationService.getAllReservations()));
+    }
+
+    @GetMapping("/upcoming")
+    public ResponseEntity<ApiResponse<List<ReservationResponse>>> getUpcoming(
+            @RequestParam(required = false) LocalDate date) {
+        LocalDate searchDate = date != null ? date : LocalDate.now();
+        return ResponseEntity.ok(ApiResponse.success(reservationService.getUpcomingReservations(searchDate)));
     }
 
     @GetMapping("/{id}")
@@ -56,17 +63,9 @@ public class ReservationController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
     public ResponseEntity<ApiResponse<ReservationResponse>> updateStatus(
             @PathVariable Integer id,
             @RequestParam ReservationStatus status) {
         return ResponseEntity.ok(ApiResponse.success(reservationService.updateReservationStatus(id, status)));
-    }
-
-    @GetMapping("/upcoming")
-    public ResponseEntity<ApiResponse<List<ReservationResponse>>> getUpcoming(
-            @RequestParam(required = false) LocalDate date) {
-        LocalDate searchDate = date != null ? date : LocalDate.now();
-        return ResponseEntity.ok(ApiResponse.success(reservationService.getUpcomingReservations(searchDate)));
     }
 }

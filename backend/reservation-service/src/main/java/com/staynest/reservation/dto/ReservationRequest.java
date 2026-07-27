@@ -14,7 +14,6 @@ public class ReservationRequest {
     private Integer guestId;
     @NotNull
     private Integer roomTypeId;
-    @NotNull
     private Integer ratePlanId;
     @NotNull
     private LocalDate checkInDate;

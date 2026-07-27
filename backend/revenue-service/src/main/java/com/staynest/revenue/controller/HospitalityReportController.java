@@ -39,15 +39,15 @@ public class HospitalityReportController {
         return ResponseEntity.ok(ApiResponse.success(reportService.getAllReports()));
     }
 
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
-    public ResponseEntity<ApiResponse<HospitalityReportResponse>> getById(@PathVariable Integer id) {
-        return ResponseEntity.ok(ApiResponse.success(reportService.getReportById(id)));
-    }
-
     @GetMapping("/summary")
     @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
     public ResponseEntity<ApiResponse<KpiSummaryResponse>> getSummary() {
         return ResponseEntity.ok(ApiResponse.success(reportService.getSummary()));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
+    public ResponseEntity<ApiResponse<HospitalityReportResponse>> getById(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getReportById(id)));
     }
 }

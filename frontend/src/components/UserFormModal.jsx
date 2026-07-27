@@ -18,8 +18,11 @@ export default function UserFormModal({ show, onClose, onSaved }) {
       await createUser(form)
       setForm({ name: '', email: '', phone: '', role: 'GUEST', password: '' })
       onSaved()
-    } catch (err) { setError(err.message) }
-    finally { setSaving(false) }
+    } catch (err) { 
+      setError(err.message) 
+    } finally { 
+      setSaving(false) 
+    }
   }
 
   return (

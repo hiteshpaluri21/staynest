@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Badge, Form, Modal, Alert } from 'react-bootstrap'
+import { Table, Button, Badge, Form, Modal, Alert, Row, Col } from 'react-bootstrap'
 import { getDiningReservations, createDiningReservation, updateDiningStatus } from '../../services/fbm/diningService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'

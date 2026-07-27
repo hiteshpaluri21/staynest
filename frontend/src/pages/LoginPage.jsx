@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { api, unwrap } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -56,6 +56,12 @@ export default function LoginPage() {
               {loading ? 'Signing in…' : 'Sign In'}
             </Button>
           </Form>
+          <div className="text-center mt-3">
+            <span className="small text-muted">Don't have an account? </span>
+            <Link to="/register" className="small fw-bold" style={{ color: '#1e3a5f', textDecoration: 'none' }}>
+              Register as Guest
+            </Link>
+          </div>
         </Card.Body>
       </Card>
     </div>

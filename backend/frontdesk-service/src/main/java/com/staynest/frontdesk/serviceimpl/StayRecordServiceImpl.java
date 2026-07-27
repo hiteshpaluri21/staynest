@@ -37,9 +37,14 @@ public class StayRecordServiceImpl implements StayRecordService {
     @Override
     @Transactional
     public StayRecordResponse checkIn(CheckInRequest request) {
-        // Verify reservation exists
+        Integer guestId = 1;
         try {
-            reservationServiceClient.getReservationById(request.getReservationId());
+            var res = reservationServiceClient.getReservationById(request.getReservationId());
+            if (res != null && res.getData() instanceof java.util.Map<?, ?> map) {
+                if (map.get("guestId") != null) {
+                    guestId = Integer.parseInt(map.get("guestId").toString());
+                }
+            }
         } catch (FeignException.NotFound e) {
             throw new BadRequestException("Invalid ReservationId: " + request.getReservationId());
         } catch (Exception e) {
@@ -53,9 +58,14 @@ public class StayRecordServiceImpl implements StayRecordService {
             throw new BadRequestException("Stay already exists for reservation: " + request.getReservationId());
         }
 
+        // Check if room is already assigned to an active stay
+        if (stayRecordRepository.findByAssignedRoomIdAndStatus(request.getRoomId(), StayStatus.ACTIVE).isPresent()) {
+            throw new BadRequestException("Room #" + request.getRoomId() + " is currently occupied by an active stay");
+        }
+
         StayRecord stay = StayRecord.builder()
                 .reservationId(request.getReservationId())
-                .guestId(request.getRoomId()) // Will be fetched from reservation in real scenario
+                .guestId(guestId)
                 .assignedRoomId(request.getRoomId())
                 .actualCheckIn(LocalDateTime.now())
                 .folioBalance(BigDecimal.ZERO)

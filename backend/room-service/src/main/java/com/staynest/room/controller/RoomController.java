@@ -39,6 +39,13 @@ public class RoomController {
         return ResponseEntity.ok(ApiResponse.success(roomService.getAllRooms()));
     }
 
+    @GetMapping("/available")
+    public ResponseEntity<ApiResponse<List<RoomResponse>>> getAvailable(
+            @RequestParam(required = false) String checkIn,
+            @RequestParam(required = false) String checkOut) {
+        return ResponseEntity.ok(ApiResponse.success(roomService.getAvailableRooms(checkIn, checkOut)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<RoomResponse>> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(roomService.getRoomById(id)));
@@ -49,13 +56,5 @@ public class RoomController {
             @PathVariable Integer id,
             @RequestParam RoomStatus status) {
         return ResponseEntity.ok(ApiResponse.success(roomService.updateRoomStatus(id, status)));
-    }
-
-    @GetMapping("/available")
-    public ResponseEntity<ApiResponse<List<RoomResponse>>> getAvailable(
-            @RequestParam String checkIn,
-            @RequestParam String checkOut) {
-        // Phase 1: Return all AVAILABLE rooms (simplified)
-        return ResponseEntity.ok(ApiResponse.success(roomService.getRoomsByStatus(RoomStatus.AVAILABLE)));
     }
 }

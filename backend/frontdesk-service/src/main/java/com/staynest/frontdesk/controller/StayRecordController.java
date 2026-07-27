@@ -22,6 +22,7 @@ import java.util.List;
 public class StayRecordController {
 
     private final StayRecordService stayRecordService;
+    private final com.staynest.frontdesk.service.FolioItemService folioItemService;
 
     @PostMapping("/checkin")
     @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
@@ -31,7 +32,7 @@ public class StayRecordController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'REVENUEMANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'REVENUEMANAGER', 'GUEST')")
     public ResponseEntity<ApiResponse<List<StayRecordResponse>>> getAll(
             @RequestParam(required = false) Integer guestId,
             @RequestParam(required = false) String status) {
@@ -61,8 +62,7 @@ public class StayRecordController {
     @GetMapping("/{id}/folio-items")
     public ResponseEntity<ApiResponse<List<com.staynest.frontdesk.dto.FolioItemResponse>>> getFolioItems(
             @PathVariable Integer id) {
-        // This will be handled by FolioItemController, kept here for convenience
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
+        return ResponseEntity.ok(ApiResponse.success(folioItemService.getFolioItemsByStayId(id)));
     }
 
     @PostMapping("/{id}/checkout")

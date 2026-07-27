@@ -69,7 +69,7 @@ export default function FBOrderPage() {
               {submitErr && <Alert variant="danger" className="py-2">{submitErr}</Alert>}
               <Form onSubmit={submit}>
                 <Row>
-                  <Col md={6}><Form.Group className="mb-2"><Form.Label small>Stay ID</Form.Label><Form.Control type="number" required value={form.stayId} onChange={e => setForm(f => ({ ...f, stayId: e.target.value }))} /></Form.Group></Col>
+                  <Col md={6}><Form.Group className="mb-2"><Form.Label className="small">Stay ID</Form.Label><Form.Control type="number" required value={form.stayId} onChange={e => setForm(f => ({ ...f, stayId: e.target.value }))} /></Form.Group></Col>
                   <Col md={6}><Form.Group className="mb-2"><Form.Label>Table No</Form.Label><Form.Control value={form.tableNumber} onChange={e => setForm(f => ({ ...f, tableNumber: e.target.value }))} /></Form.Group></Col>
                 </Row>
                 <Form.Group className="mb-3"><Form.Label>Order Type</Form.Label>

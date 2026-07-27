@@ -31,6 +31,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 		roomType.setMaxOccupancy(request.getMaxOccupancy());
 		roomType.setBaseRate(request.getBaseRate());
 		roomType.setAmenitiesList(request.getAmenitiesList());
+		roomType.setStatus(RatePlanStatus.ACTIVE);
 
 		RoomType saved = roomTypeRepository.save(roomType);
 		log.info("RoomType created: {}", saved.getRoomTypeId());

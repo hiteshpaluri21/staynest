@@ -12,6 +12,7 @@ public interface RoomService {
     List<RoomResponse> getAllRooms();
     RoomResponse getRoomById(Integer id);
     List<RoomResponse> getRoomsByStatus(RoomStatus status);
+    List<RoomResponse> getAvailableRooms(String checkIn, String checkOut);
     List<RoomResponse> getRoomsByType(Integer roomTypeId);
     RoomResponse updateRoomStatus(Integer id, RoomStatus status);
 }
