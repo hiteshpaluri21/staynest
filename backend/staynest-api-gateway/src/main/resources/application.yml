@@ -48,9 +48,9 @@ spring:
               uri: lb://NOTIFICATION-SERVICE
               predicates:
                 - Path=/api/notifications/**
-  
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_FIRST
 
 eureka:
   client:

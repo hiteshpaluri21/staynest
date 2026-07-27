@@ -1,4 +1,4 @@
-const BASE = '' // Vite proxy handles /api -> http://localhost:8080
+const BASE = 'http://localhost:8090' // Vite proxy handles /api -> http://localhost:8080
 
 function getToken() {
   return localStorage.getItem('token') || ''
