@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PatchMapping;
 
-@FeignClient(name = "reservation-service")
+@FeignClient(name = "RESERVATION-SERVICE")
 public interface ReservationServiceClient {
 
     @GetMapping("/api/reservations/{id}")

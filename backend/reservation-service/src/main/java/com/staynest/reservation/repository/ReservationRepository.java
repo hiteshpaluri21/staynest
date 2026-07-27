@@ -5,6 +5,9 @@ import com.staynest.reservation.enums.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -14,4 +17,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
     List<Reservation> findByStatus(ReservationStatus status);
     List<Reservation> findByCheckInDate(LocalDate checkInDate);
     List<Reservation> findByCheckInDateBetween(LocalDate start, LocalDate end);
+
+    @Query("SELECT r FROM Reservation r WHERE r.roomTypeId = :roomTypeId AND r.status IN (com.staynest.reservation.enums.ReservationStatus.CONFIRMED, com.staynest.reservation.enums.ReservationStatus.CHECKEDIN) AND r.checkInDate < :checkOutDate AND r.checkOutDate > :checkInDate")
+    List<Reservation> findOverlappingReservations(
+            @Param("roomTypeId") Integer roomTypeId,
+            @Param("checkInDate") LocalDate checkInDate,
+            @Param("checkOutDate") LocalDate checkOutDate);
 }

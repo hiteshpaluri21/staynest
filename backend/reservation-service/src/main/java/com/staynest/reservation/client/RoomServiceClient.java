@@ -14,4 +14,7 @@ public interface RoomServiceClient {
 
     @GetMapping("/api/rate-plans/{id}")
     ApiResponse<?> getRatePlanById(@PathVariable Integer id);
+
+    @GetMapping("/api/rooms")
+    ApiResponse<java.util.List<java.util.Map<String, Object>>> getAllRooms();
 }

@@ -13,4 +13,5 @@ public interface StayRecordRepository extends JpaRepository<StayRecord, Integer>
     List<StayRecord> findByGuestId(Integer guestId);
     List<StayRecord> findByStatus(StayStatus status);
     Optional<StayRecord> findByReservationId(Integer reservationId);
+    Optional<StayRecord> findByAssignedRoomIdAndStatus(Integer assignedRoomId, StayStatus status);
 }

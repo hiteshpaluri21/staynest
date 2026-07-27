@@ -18,9 +18,9 @@ export default function BookingConfirmModal({ data, onClose }) {
     e.preventDefault(); setSaving(true); setError('')
     try {
       await createReservation({
-        guestId: user?.userId,
+        guestId: user?.userId || 1,
         roomTypeId: data.type.roomTypeId,
-        ratePlanId: Number(ratePlanId),
+        ratePlanId: Number(ratePlanId) || null,
         checkInDate: data.checkIn,
         checkOutDate: data.checkOut,
         nights,

@@ -16,7 +16,7 @@ function hasAccess(role, path) {
   return allowed.some(p => path === p || path.startsWith(p + '/'))
 }
 
-export default function ProtectedRoute({ children, requiredRole }) {
+export default function ProtectedRoute({ children, requiredRole, roles }) {
   const { isAuthenticated, user, loading } = useAuth()
   const location = useLocation()
 
@@ -34,11 +34,15 @@ export default function ProtectedRoute({ children, requiredRole }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (requiredRole && user.role !== requiredRole && user.role !== 'ADMIN') {
+  if (roles && roles.length > 0 && !roles.includes(user?.role) && user?.role !== 'ADMIN') {
     return <Navigate to="/unauthorized" replace />
   }
 
-  if (!hasAccess(user.role, location.pathname)) {
+  if (requiredRole && user?.role !== requiredRole && user?.role !== 'ADMIN') {
+    return <Navigate to="/unauthorized" replace />
+  }
+
+  if (!hasAccess(user?.role, location.pathname)) {
     return <Navigate to="/unauthorized" replace />
   }
 

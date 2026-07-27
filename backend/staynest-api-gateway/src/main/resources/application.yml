@@ -12,45 +12,52 @@ spring:
             - id: iam-service
               uri: lb://IAM-SERVICE
               predicates:
-              - Path=/api/auth/**,/api/users/**,/api/audit-logs/**
+              - Path=/api/auth/**,/api/auth,/api/users/**,/api/users,/api/audit-logs/**,/api/audit-logs
         
             - id: room-service
               uri: lb://ROOM-SERVICE
               predicates:
-                - Path=/api/room-types/**,/api/rooms/**,/api/rate-plans/**,/api/hospitality-reports/**
+                - Path=/api/room-types/**,/api/room-types,/api/rooms/**,/api/rooms,/api/rate-plans/**,/api/rate-plans,/api/hospitality-reports/**,/api/hospitality-reports
           
             - id: reservation-service
               uri: lb://RESERVATION-SERVICE
               predicates:
-                - Path=/api/guests/**,/api/reservations/**
+                - Path=/api/guests/**,/api/guests,/api/reservations/**,/api/reservations
             
             - id: frontdesk-service
-              uri: lb://frontdesk-service
+              uri: lb://FRONTDESK-SERVICE
               predicates:
-                - Path=/api/stay-records/**,/api/folio-items/**
+                - Path=/api/stay-records/**,/api/stay-records,/api/folio-items/**,/api/folio-items
             
             - id: housekeeping-service
-              uri: lb://housekeeping-service
+              uri: lb://HOUSEKEEPING-SERVICE
               predicates:
-                - Path=/api/housekeeping-tasks/**,/api/maintenance-requests/**
+                - Path=/api/housekeeping-tasks/**,/api/housekeeping-tasks,/api/maintenance-requests/**,/api/maintenance-requests
             
             - id: fb-service
-              uri: lb://fb-service
+              uri: lb://FB-SERVICE
               predicates:
-                - Path=/api/menu-items/**,/api/fb-orders/**,/api/dining-reservations/**
+                - Path=/api/menu-items/**,/api/menu-items,/api/fb-orders/**,/api/fb-orders,/api/dining-reservations/**,/api/dining-reservations
             
             - id: revenue-service
-              uri: lb://revenue-service
+              uri: lb://REVENUE-SERVICE
               predicates:
-                - Path=/api/reports/**
+                - Path=/api/reports/**,/api/reports
             
             - id: notification-service
               uri: lb://NOTIFICATION-SERVICE
               predicates:
+<<<<<<< HEAD
                 - Path=/api/notifications/**
 
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_FIRST
+=======
+                - Path=/api/notifications/**,/api/notifications
+  
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+>>>>>>> personal/main
 
 eureka:
   client:

@@ -42,6 +42,7 @@ public class RatePlanServiceImpl implements RatePlanService {
 		ratePlan.setValidFrom(request.getValidFrom());
 		ratePlan.setValidTo(request.getValidTo());
 		ratePlan.setMealPlanIncluded(request.getMealPlanIncluded());
+		ratePlan.setStatus(RatePlanStatus.ACTIVE);
 
 		RatePlan saved = ratePlanRepository.save(ratePlan);
 		log.info("RatePlan created: {}", saved.getRatePlanId());

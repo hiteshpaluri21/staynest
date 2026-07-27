@@ -7,9 +7,23 @@ import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import BookingConfirmModal from '../../components/BookingConfirmModal'
 
+const formatDate = (date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const addDays = (dateStr, days) => {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return formatDate(d)
+}
+
 export default function BookingSearchPage() {
-  const today = new Date().toISOString().slice(0, 10)
-  const [form, setForm] = useState({ checkIn: today, checkOut: today, adults: 2, children: 0 })
+  const todayStr = formatDate(new Date())
+  const tomorrowStr = addDays(todayStr, 1)
+  const [form, setForm] = useState({ checkIn: todayStr, checkOut: tomorrowStr, adults: 2, children: 0 })
   const [rooms, setRooms] = useState([])
   const [types, setTypes] = useState([])
   const [plans, setPlans] = useState([])
@@ -18,6 +32,16 @@ export default function BookingSearchPage() {
   const [searched, setSearched] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleCheckInChange = (e) => {
+    const newIn = e.target.value
+    const minOut = addDays(newIn, 1)
+    setForm(f => ({
+      ...f,
+      checkIn: newIn,
+      checkOut: f.checkOut <= newIn ? minOut : f.checkOut
+    }))
+  }
 
   useEffect(() => {
     Promise.all([getRoomTypes(), getRatePlans()]).then(([t, p]) => { setTypes(t); setPlans(p) }).catch(() => {})
@@ -40,8 +64,8 @@ export default function BookingSearchPage() {
         <Card.Body>
           <Form onSubmit={search}>
             <Row>
-              <Col md={3}><Form.Group><Form.Label>Check-In</Form.Label><Form.Control type="date" required value={form.checkIn} onChange={e => set('checkIn', e.target.value)} /></Form.Group></Col>
-              <Col md={3}><Form.Group><Form.Label>Check-Out</Form.Label><Form.Control type="date" required value={form.checkOut} onChange={e => set('checkOut', e.target.value)} /></Form.Group></Col>
+              <Col md={3}><Form.Group><Form.Label>Check-In</Form.Label><Form.Control type="date" min={todayStr} required value={form.checkIn} onChange={handleCheckInChange} /></Form.Group></Col>
+              <Col md={3}><Form.Group><Form.Label>Check-Out</Form.Label><Form.Control type="date" min={addDays(form.checkIn, 1)} required value={form.checkOut} onChange={e => set('checkOut', e.target.value)} /></Form.Group></Col>
               <Col md={2}><Form.Group><Form.Label>Adults</Form.Label><Form.Control type="number" min="1" value={form.adults} onChange={e => set('adults', e.target.value)} /></Form.Group></Col>
               <Col md={2}><Form.Group><Form.Label>Children</Form.Label><Form.Control type="number" min="0" value={form.children} onChange={e => set('children', e.target.value)} /></Form.Group></Col>
               <Col md={2} className="d-flex align-items-end"><Button type="submit" className="w-100" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Search</Button></Col>

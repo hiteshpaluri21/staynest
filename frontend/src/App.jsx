@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import UserListPage from './pages/iam/UserListPage'
 import RoomTypePage from './pages/ric/RoomTypePage'
 import RoomListPage from './pages/ric/RoomListPage'
@@ -29,16 +30,17 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/unauthorized" element={<div className="p-5 text-center"><h3>403 — Unauthorized</h3></div>} />
 
       <Route path="/users" element={withLayout(['ADMIN'], <UserListPage />)} />
       <Route path="/room-types" element={withLayout(['ADMIN'], <RoomTypePage />)} />
-      <Route path="/rooms" element={withLayout(['ADMIN', 'FRONTDESK'], <RoomListPage />)} />
+      <Route path="/rooms" element={withLayout(['ADMIN'], <RoomListPage />)} />
       <Route path="/rate-plans" element={withLayout(['ADMIN', 'REVENUEMANAGER'], <RatePlanPage />)} />
       <Route path="/analytics" element={withLayout(['ADMIN', 'REVENUEMANAGER'], <AnalyticsDashboardPage />)} />
 
-      <Route path="/book" element={withLayout(['GUEST', 'FRONTDESK', 'ADMIN'], <BookingSearchPage />)} />
-      <Route path="/my-reservations" element={withLayout(['GUEST', 'FRONTDESK', 'ADMIN'], <MyReservationsPage />)} />
+      <Route path="/book" element={withLayout(['GUEST', 'ADMIN'], <BookingSearchPage />)} />
+      <Route path="/my-reservations" element={withLayout(['GUEST', 'ADMIN'], <MyReservationsPage />)} />
       <Route path="/profile" element={withLayout(['GUEST', 'FRONTDESK', 'ADMIN'], <GuestProfilePage />)} />
 
       <Route path="/front-desk" element={withLayout(['FRONTDESK', 'ADMIN'], <FrontDeskPage />)} />
@@ -48,7 +50,7 @@ export default function App() {
       <Route path="/maintenance" element={withLayout(['HOUSEKEEPING', 'ADMIN'], <MaintenancePage />)} />
 
       <Route path="/menu" element={withLayout(['FBMANAGER', 'ADMIN'], <MenuPage />)} />
-      <Route path="/orders" element={withLayout(['FBMANAGER', 'ADMIN', 'FRONTDESK'], <FBOrderPage />)} />
+      <Route path="/orders" element={withLayout(['FBMANAGER', 'ADMIN'], <FBOrderPage />)} />
       <Route path="/dining-reservations" element={withLayout(['FBMANAGER', 'ADMIN'], <DiningReservationPage />)} />
 
       <Route path="/notifications" element={withLayout(['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'REVENUEMANAGER', 'ADMIN'], <NotificationsPage />)} />

@@ -15,17 +15,24 @@ export default function FrontDeskPage() {
   const [error, setError] = useState('')
   const [selected, setSelected] = useState(null)
 
+  const [allStays, setAllStays] = useState([])
+
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const [up, st] = await Promise.all([
+      const [up, st, fullSt] = await Promise.all([
         getUpcoming().catch(() => []),
         getStays({ status: 'ACTIVE' }).catch(() => []),
+        getStays().catch(() => []),
       ])
-      setArrivals(up); setStays(st)
+      setArrivals(up); setStays(st); setAllStays(fullSt)
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
+
+  const activeResIds = new Set(stays.map(s => s.reservationId))
+  const checkedOutResIds = new Set(allStays.filter(s => s.status === 'CHECKEDOUT').map(s => s.reservationId))
+  const filteredArrivals = arrivals.filter(r => r.status !== 'CHECKEDOUT' && !checkedOutResIds.has(r.reservationId))
 
   return (
     <div>
@@ -36,24 +43,30 @@ export default function FrontDeskPage() {
             <Card className="shadow-sm mb-4">
               <Card.Header className="bg-white"><strong>Today's Arrivals</strong></Card.Header>
               <Card.Body>
-                {arrivals.length === 0 ? <EmptyState message="No upcoming arrivals" /> :
+                {filteredArrivals.length === 0 ? <EmptyState message="No upcoming arrivals" /> :
                   <Table hover>
-                    <thead><tr><th>Res ID</th><th>Guest</th><th>Check-In</th><th>Nights</th><th>Action</th></tr></thead>
+                    <thead><tr><th>Res ID</th><th>Guest</th><th>Check-In</th><th>Nights</th><th>Status / Action</th></tr></thead>
                     <tbody>
-                      {arrivals.map(r => (
-                        <tr key={r.reservationId}>
-                          <td>{r.reservationId}</td>
-                          <td>{r.guestName}</td>
-                          <td>{r.checkInDate}</td>
-                          <td>{r.nights}</td>
-                          <td>
-                            {r.status === 'CONFIRMED' ?
-                              <Button size="sm" style={{ background: '#16a34a', borderColor: '#16a34a' }} onClick={() => setSelected(r)}>Check-In</Button> :
-                              <Badge bg={statusBadge(r.status)}>{r.status}</Badge>
-                            }
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredArrivals.map(r => {
+                        const isCheckedIn = activeResIds.has(r.reservationId) || r.status === 'CHECKEDIN'
+                        return (
+                          <tr key={r.reservationId}>
+                            <td>#{r.reservationId}</td>
+                            <td>{r.guestName}</td>
+                            <td>{r.checkInDate}</td>
+                            <td>{r.nights}</td>
+                            <td>
+                              {isCheckedIn ? (
+                                <Badge bg="success">CHECKED IN</Badge>
+                              ) : r.status === 'CONFIRMED' ? (
+                                <Button size="sm" style={{ background: '#16a34a', borderColor: '#16a34a' }} onClick={() => setSelected(r)}>Check-In</Button>
+                              ) : (
+                                <Badge bg={statusBadge(r.status)}>{r.status}</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </Table>
                 }
