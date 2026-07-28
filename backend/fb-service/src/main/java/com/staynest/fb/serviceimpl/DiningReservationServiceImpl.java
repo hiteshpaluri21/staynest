@@ -1,12 +1,16 @@
 package com.staynest.fb.serviceimpl;
 
+import com.staynest.fb.client.FrontDeskServiceClient;
+import com.staynest.fb.client.IamServiceClient;
 import com.staynest.fb.dto.DiningReservationRequest;
 import com.staynest.fb.dto.DiningReservationResponse;
 import com.staynest.fb.entity.DiningReservation;
 import com.staynest.fb.enums.DiningResStatus;
+import com.staynest.fb.exception.BadRequestException;
 import com.staynest.fb.exception.ResourceNotFoundException;
 import com.staynest.fb.repository.DiningReservationRepository;
 import com.staynest.fb.service.DiningReservationService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,9 +25,22 @@ import java.util.stream.Collectors;
 public class DiningReservationServiceImpl implements DiningReservationService {
 
     private final DiningReservationRepository reservationRepository;
+    private final IamServiceClient iamServiceClient;
+    private final FrontDeskServiceClient frontDeskServiceClient;
 
     @Override
     public DiningReservationResponse createReservation(DiningReservationRequest request) {
+        // The reservation date can't be in the past.
+        if (request.getDate() == null || request.getDate().isBefore(LocalDate.now())) {
+            throw new BadRequestException("Reservation date cannot be in the past");
+        }
+        // The guest must exist.
+        validateGuest(request.getGuestId());
+        // The stay is optional, but if supplied it must be a real stay.
+        if (request.getStayId() != null) {
+            validateStay(request.getStayId());
+        }
+
         DiningReservation reservation = DiningReservation.builder()
                 .guestId(request.getGuestId())
                 .stayId(request.getStayId())
@@ -71,6 +88,43 @@ public class DiningReservationServiceImpl implements DiningReservationService {
     public List<DiningReservationResponse> getReservationsByDate(LocalDate date) {
         return reservationRepository.findByDate(date).stream()
                 .map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    private void validateGuest(Integer guestId) {
+        if (guestId == null) {
+            throw new BadRequestException("Guest ID is required");
+        }
+        try {
+            var resp = iamServiceClient.getUserById(guestId);
+            if (resp == null || resp.getData() == null) {
+                throw new BadRequestException("Invalid Guest ID: " + guestId + " (no such guest)");
+            }
+        } catch (FeignException.NotFound e) {
+            throw new BadRequestException("Invalid Guest ID: " + guestId + " (no such guest)");
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("iam-service call failed while validating Guest ID {}", guestId, e);
+            throw new BadRequestException("Unable to validate Guest ID " + guestId
+                    + " (iam-service error: " + e.getMessage() + ")");
+        }
+    }
+
+    private void validateStay(Integer stayId) {
+        try {
+            var resp = frontDeskServiceClient.getStayById(stayId);
+            if (resp == null || resp.getData() == null) {
+                throw new BadRequestException("Invalid Stay ID: " + stayId + " (no such stay)");
+            }
+        } catch (FeignException.NotFound e) {
+            throw new BadRequestException("Invalid Stay ID: " + stayId + " (no such stay)");
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("frontdesk-service call failed while validating Stay ID {}", stayId, e);
+            throw new BadRequestException("Unable to validate Stay ID " + stayId
+                    + " (frontdesk-service error: " + e.getMessage() + ")");
+        }
     }
 
     private DiningReservationResponse mapToResponse(DiningReservation dr) {

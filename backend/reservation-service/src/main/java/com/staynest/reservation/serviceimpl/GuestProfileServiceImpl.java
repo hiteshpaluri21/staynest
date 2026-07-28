@@ -2,6 +2,7 @@ package com.staynest.reservation.serviceimpl;
 
 import com.staynest.reservation.dto.GuestProfileRequest;
 import com.staynest.reservation.dto.GuestProfileResponse;
+import com.staynest.reservation.dto.GuestProfileUpdateRequest;
 import com.staynest.reservation.entity.GuestProfile;
 import com.staynest.reservation.enums.GuestStatus;
 import com.staynest.reservation.enums.LoyaltyTier;
@@ -69,6 +70,23 @@ public class GuestProfileServiceImpl implements GuestProfileService {
         GuestProfile guest = guestProfileRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Guest not found with email: " + email));
         return mapToResponse(guest);
+    }
+
+    @Override
+    public GuestProfileResponse updateGuestProfile(Integer id, GuestProfileUpdateRequest request) {
+        GuestProfile guest = guestProfileRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Guest not found: " + id));
+        // Only overwrite fields the client actually supplied, so a partial edit can't null out
+        // stored data (name is @NotBlank so it is always present).
+        guest.setName(request.getName());
+        if (request.getPhone() != null) guest.setPhone(request.getPhone());
+        if (request.getNationality() != null) guest.setNationality(request.getNationality());
+        if (request.getIdDocumentType() != null) guest.setIdDocumentType(request.getIdDocumentType());
+        if (request.getIdNumber() != null) guest.setIdNumber(request.getIdNumber());
+        if (request.getPreferencesJson() != null) guest.setPreferencesJson(request.getPreferencesJson());
+        GuestProfile updated = guestProfileRepository.save(guest);
+        log.info("Guest {} profile updated", id);
+        return mapToResponse(updated);
     }
 
     @Override

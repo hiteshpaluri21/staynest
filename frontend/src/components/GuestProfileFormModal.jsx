@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, Form, Button, Alert } from 'react-bootstrap'
-import { api } from '../services/api'
+import { updateGuest } from '../services/rbm/guestService'
 
 export default function GuestProfileFormModal({ show, guest, onClose, onSaved }) {
   const [form, setForm] = useState({ ...guest })
@@ -8,12 +8,20 @@ export default function GuestProfileFormModal({ show, guest, onClose, onSaved })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  // Reset the form to the latest guest data each time the modal opens so cancelled edits don't persist.
+  useEffect(() => { if (show) { setForm({ ...guest }); setError('') } }, [show, guest])
+
   const submit = async (e) => {
     e.preventDefault(); setSaving(true); setError('')
     try {
-      // Reservation-service doesn't expose a PUT; if you add one, swap this. For now, we use the loyalty endpoint to demonstrate.
-      // For full edit support add PATCH /api/guests/{id} on backend.
-      await api.patch(`/api/guests/${guest.guestId}/loyalty`, null, { params: { tier: form.loyaltyTier } })
+      await updateGuest(guest.guestId, {
+        name: form.name,
+        phone: form.phone,
+        nationality: form.nationality,
+        idDocumentType: form.idDocumentType,
+        idNumber: form.idNumber,
+        preferencesJson: form.preferencesJson,
+      })
       onSaved()
     } catch (err) { setError(err.message) } finally { setSaving(false) }
   }
@@ -27,12 +35,9 @@ export default function GuestProfileFormModal({ show, guest, onClose, onSaved })
           <Form.Group className="mb-3"><Form.Label>Name</Form.Label><Form.Control value={form.name || ''} onChange={e => set('name', e.target.value)} /></Form.Group>
           <Form.Group className="mb-3"><Form.Label>Phone</Form.Label><Form.Control value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></Form.Group>
           <Form.Group className="mb-3"><Form.Label>Nationality</Form.Label><Form.Control value={form.nationality || ''} onChange={e => set('nationality', e.target.value)} /></Form.Group>
+          <Form.Group className="mb-3"><Form.Label>ID Document Type</Form.Label><Form.Control value={form.idDocumentType || ''} onChange={e => set('idDocumentType', e.target.value)} /></Form.Group>
+          <Form.Group className="mb-3"><Form.Label>ID Number</Form.Label><Form.Control value={form.idNumber || ''} onChange={e => set('idNumber', e.target.value)} /></Form.Group>
           <Form.Group className="mb-3"><Form.Label>Preferences</Form.Label><Form.Control as="textarea" rows={2} value={form.preferencesJson || ''} onChange={e => set('preferencesJson', e.target.value)} /></Form.Group>
-          <Form.Group className="mb-3"><Form.Label>Loyalty Tier</Form.Label>
-            <Form.Select value={form.loyaltyTier || 'NONE'} onChange={e => set('loyaltyTier', e.target.value)}>
-              {['NONE', 'SILVER', 'GOLD', 'PLATINUM'].map(t => <option key={t}>{t}</option>)}
-            </Form.Select>
-          </Form.Group>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

@@ -3,6 +3,7 @@ package com.staynest.reservation.controller;
 import com.staynest.reservation.dto.ApiResponse;
 import com.staynest.reservation.dto.GuestProfileRequest;
 import com.staynest.reservation.dto.GuestProfileResponse;
+import com.staynest.reservation.dto.GuestProfileUpdateRequest;
 import com.staynest.reservation.enums.LoyaltyTier;
 import com.staynest.reservation.service.GuestProfileService;
 import jakarta.validation.Valid;
@@ -44,6 +45,14 @@ public class GuestProfileController {
     @GetMapping("/email/{email}")
     public ResponseEntity<ApiResponse<GuestProfileResponse>> getByEmail(@PathVariable String email) {
         return ResponseEntity.ok(ApiResponse.success(guestProfileService.getGuestByEmail(email)));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'GUEST')")
+    public ResponseEntity<ApiResponse<GuestProfileResponse>> update(
+            @PathVariable Integer id,
+            @Valid @RequestBody GuestProfileUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Guest updated", guestProfileService.updateGuestProfile(id, request)));
     }
 
     @PatchMapping("/{id}/loyalty")

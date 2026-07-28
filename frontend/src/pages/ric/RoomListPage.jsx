@@ -19,11 +19,14 @@ export default function RoomListPage() {
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const [rs, ts] = await Promise.all([getRooms(filter), getRoomTypes()])
+      // Backend honors only one filter param at a time, so fetch by status and filter type client-side.
+      const [rs, ts] = await Promise.all([getRooms(filter.status ? { status: filter.status } : {}), getRoomTypes()])
       setRooms(rs); setTypes(ts)
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
-  useEffect(() => { load() }, [filter.status, filter.roomTypeId])
+  useEffect(() => { load() }, [filter.status])
+
+  const shownRooms = rooms.filter(r => !filter.roomTypeId || String(r.roomTypeId) === String(filter.roomTypeId))
 
   const changeStatus = async (room, status) => {
     try { await updateRoomStatus(room.roomId, status); load() } catch (e) { alert(e.message) }
@@ -46,11 +49,11 @@ export default function RoomListPage() {
         </Form.Select>
       </div>
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
-        rooms.length === 0 ? <EmptyState /> :
+        shownRooms.length === 0 ? <EmptyState /> :
           <Table hover responsive>
             <thead><tr><th>ID</th><th>Room No</th><th>Floor</th><th>Type</th><th>Status</th><th>Change Status</th></tr></thead>
             <tbody>
-              {rooms.map(r => (
+              {shownRooms.map(r => (
                 <tr key={r.roomId}>
                   <td>{r.roomId}</td>
                   <td><strong>{r.roomNumber}</strong></td>

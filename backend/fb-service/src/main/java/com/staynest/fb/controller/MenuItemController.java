@@ -47,6 +47,14 @@ public class MenuItemController {
         return ResponseEntity.ok(ApiResponse.success(menuItemService.getMenuItemById(id)));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER')")
+    public ResponseEntity<ApiResponse<MenuItemResponse>> update(
+            @PathVariable Integer id,
+            @Valid @RequestBody MenuItemRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Menu item updated", menuItemService.updateMenuItem(id, request)));
+    }
+
     @PatchMapping("/{id}/availability")
     @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER')")
     public ResponseEntity<ApiResponse<MenuItemResponse>> updateAvailability(

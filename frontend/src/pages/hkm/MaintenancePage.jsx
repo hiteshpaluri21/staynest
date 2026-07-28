@@ -1,63 +1,121 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Table, Button, Badge, Form, Modal, Alert } from 'react-bootstrap'
-import { getRequests, reportIssue, resolveRequest } from '../../services/hkm/maintenanceService'
+import { getRequests, reportIssue, updateRequestStatus } from '../../services/hkm/maintenanceService'
+import { getStays } from '../../services/fds/stayService'
+import { getRooms } from '../../services/ric/roomService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import { statusBadge } from '../../utils/badges'
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+const STATUSES = ['OPEN', 'INPROGRESS', 'RESOLVED', 'DEFERRED']
 
 export default function MaintenancePage() {
   const { user } = useAuth()
+  const isGuest = user?.role === 'GUEST'
   const [items, setItems] = useState([])
+  const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ roomId: '', issueDescription: '', priority: 'MEDIUM' })
   const [saveErr, setSaveErr] = useState('')
+  // For guests: the room they are currently checked in to (null until resolved / when not checked in).
+  const [activeRoomId, setActiveRoomId] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
-    try { setItems(await getRequests()) } catch (e) { setError(e.message) } finally { setLoading(false) }
+    try {
+      // Rooms let us show a human room number instead of a raw id (best-effort; ignore if not permitted).
+      const roomList = await getRooms().catch(() => [])
+      setRooms(roomList || [])
+      if (isGuest) {
+        // A guest sees only their own requests, and can raise a new one for their active stay's room.
+        const [mine, stays] = await Promise.all([
+          getRequests({ reportedBy: user?.userId }).catch(() => []),
+          getStays({ guestId: user?.userId }).catch(() => []),
+        ])
+        const active = (stays || []).find(s => s.status === 'ACTIVE')
+        setActiveRoomId(active?.assignedRoomId ?? null)
+        setItems(mine || [])
+      } else {
+        setItems(await getRequests())
+      }
+    } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [user])
 
-  const resolve = async (id) => {
-    if (!window.confirm('Mark as resolved?')) return
-    try { await resolveRequest(id); load() } catch (e) { alert(e.message) }
+  const roomNumberMap = useMemo(
+    () => Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber])),
+    [rooms]
+  )
+  const roomLabel = (roomId) => {
+    const num = roomNumberMap[roomId]
+    return num != null ? `Room ${num}` : `Room #${roomId}`
+  }
+
+  const changeStatus = async (id, status) => {
+    try { await updateRequestStatus(id, status); load() } catch (e) { alert(e.message) }
+  }
+
+  const openReport = () => {
+    setSaveErr('')
+    // Pre-fill the guest's checked-in room; staff pick from the dropdown.
+    setForm({ roomId: isGuest && activeRoomId != null ? String(activeRoomId) : '', issueDescription: '', priority: 'MEDIUM' })
+    setShow(true)
   }
 
   const submit = async (e) => {
     e.preventDefault(); setSaveErr('')
+    // Guests may only report for the room of their active stay.
+    const roomId = isGuest ? activeRoomId : Number(form.roomId)
+    if (roomId == null || Number.isNaN(roomId) || roomId === 0) { setSaveErr('A valid room is required'); return }
     try {
-      await reportIssue({ ...form, roomId: Number(form.roomId), reportedBy: user?.userId })
+      await reportIssue({ ...form, roomId: Number(roomId), reportedBy: user?.userId })
       setShow(false); setForm({ roomId: '', issueDescription: '', priority: 'MEDIUM' }); load()
     } catch (err) { setSaveErr(err.message) }
   }
 
+  const canReport = !isGuest || activeRoomId != null
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="mb-0">Maintenance Requests</h4>
-        <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => setShow(true)}>+ Report Issue</Button>
+        <h4 className="mb-0">{isGuest ? 'My Maintenance Requests' : 'Maintenance Requests'}</h4>
+        {canReport && (
+          <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={openReport}>+ Report Issue</Button>
+        )}
       </div>
+
+      {isGuest && !canReport && !loading && (
+        <Alert variant="info">You need to be checked in to raise a maintenance request.</Alert>
+      )}
+
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
-        items.length === 0 ? <EmptyState message="No maintenance requests" /> :
-        <Table hover responsive>
-          <thead><tr><th>ID</th><th>Room</th><th>Issue</th><th>Priority</th><th>Raised</th><th>Status</th><th>Action</th></tr></thead>
+        items.length === 0 ? <EmptyState message={isGuest ? 'You have no maintenance requests' : 'No maintenance requests'} /> :
+        <Table hover responsive className="align-middle">
+          <thead><tr><th>ID</th><th>Room</th><th>Issue</th><th>Priority</th><th>Raised</th><th>Status</th>{!isGuest && <th style={{ width: 170 }}>Action</th>}</tr></thead>
           <tbody>
             {items.map(m => (
               <tr key={m.requestId}>
-                <td>{m.requestId}</td>
-                <td>#{m.roomId}</td>
+                <td>#{m.requestId}</td>
+                <td>{roomLabel(m.roomId)}</td>
                 <td>{m.issueDescription}</td>
                 <td><Badge bg={m.priority === 'URGENT' ? 'danger' : m.priority === 'HIGH' ? 'warning' : 'secondary'}>{m.priority}</Badge></td>
                 <td className="small">{m.raisedDate}</td>
                 <td><Badge bg={statusBadge(m.status)}>{m.status}</Badge></td>
-                <td>
-                  {m.status !== 'RESOLVED' && <Button size="sm" variant="outline-success" onClick={() => resolve(m.requestId)}>Resolve</Button>}
-                </td>
+                {!isGuest && (
+                  <td>
+                    <Form.Select
+                      size="sm"
+                      value={m.status}
+                      onChange={e => changeStatus(m.requestId, e.target.value)}
+                    >
+                      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </Form.Select>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -69,7 +127,22 @@ export default function MaintenancePage() {
         <Form onSubmit={submit}>
           <Modal.Body>
             {saveErr && <Alert variant="danger" className="py-2">{saveErr}</Alert>}
-            <Form.Group className="mb-3"><Form.Label>Room ID</Form.Label><Form.Control type="number" required value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))} /></Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Room</Form.Label>
+              {isGuest ? (
+                <Form.Control value={activeRoomId != null ? roomLabel(activeRoomId) : ''} disabled />
+              ) : (
+                <Form.Select required value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))}>
+                  <option value="">Select a room…</option>
+                  {rooms.map(r => (
+                    <option key={r.roomId} value={r.roomId}>
+                      Room {r.roomNumber ?? r.roomId}{r.status ? ` — ${r.status}` : ''}
+                    </option>
+                  ))}
+                </Form.Select>
+              )}
+              {isGuest && <Form.Text className="text-muted">Your checked-in room.</Form.Text>}
+            </Form.Group>
             <Form.Group className="mb-3"><Form.Label>Issue Description</Form.Label><Form.Control as="textarea" rows={3} required value={form.issueDescription} onChange={e => setForm(f => ({ ...f, issueDescription: e.target.value }))} /></Form.Group>
             <Form.Group><Form.Label>Priority</Form.Label><Form.Select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>{PRIORITIES.map(p => <option key={p}>{p}</option>)}</Form.Select></Form.Group>
           </Modal.Body>

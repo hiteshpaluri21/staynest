@@ -22,6 +22,36 @@ import java.util.stream.Collectors;
 public class MaintenanceRequestServiceImpl implements MaintenanceRequestService {
 
     private final MaintenanceRequestRepository maintenanceRepository;
+    private final com.staynest.housekeeping.client.NotificationServiceClient notificationServiceClient;
+    private final com.staynest.housekeeping.client.IamServiceClient iamServiceClient;
+
+    /** Fire-and-forget notification; a failure here must never fail the primary action. */
+    private void notify(Integer userId, String message) {
+        if (userId == null) return;
+        try {
+            notificationServiceClient.create(java.util.Map.of(
+                    "userId", userId, "category", "HOUSEKEEPING", "message", message));
+        } catch (Exception e) {
+            log.warn("Failed to send HOUSEKEEPING notification to user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /** Fan out a notification to every active HOUSEKEEPING staff member. Best-effort. */
+    private void notifyHousekeepingStaff(String message) {
+        try {
+            var resp = iamServiceClient.getUsersByRole("HOUSEKEEPING");
+            var staff = resp != null ? resp.getData() : null;
+            if (staff == null) return;
+            for (var u : staff) {
+                Object id = u.get("userId");
+                if (id instanceof Number n) {
+                    notify(n.intValue(), message);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to resolve HOUSEKEEPING staff for notification: {}", e.getMessage());
+        }
+    }
 
     @Override
     public MaintenanceResponse reportIssue(MaintenanceRequestDto request) {
@@ -34,6 +64,11 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
 
         MaintenanceRequest saved = maintenanceRepository.save(maintenance);
         log.info("Maintenance request created: {}", saved.getRequestId());
+        // Acknowledge the reporter, and alert the housekeeping team of the new request.
+        notify(saved.getReportedBy(), "Your maintenance request #" + saved.getRequestId()
+                + " for room #" + saved.getRoomId() + " has been logged.");
+        notifyHousekeepingStaff("New " + saved.getPriority() + " maintenance request #" + saved.getRequestId()
+                + " raised for room #" + saved.getRoomId() + ".");
         return mapToResponse(saved);
     }
 
@@ -43,8 +78,18 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
                 .orElseThrow(() -> new ResourceNotFoundException("Maintenance request not found: " + requestId));
         
         request.setStatus(status);
+        // Keep resolvedDate consistent with the status.
+        if (status == MaintenanceStatus.RESOLVED) {
+            if (request.getResolvedDate() == null) {
+                request.setResolvedDate(LocalDate.now());
+            }
+        } else {
+            request.setResolvedDate(null);
+        }
         MaintenanceRequest updated = maintenanceRepository.save(request);
         log.info("Maintenance request {} status updated to {}", requestId, status);
+        notify(updated.getReportedBy(), "Your maintenance request #" + updated.getRequestId()
+                + " is now " + status + ".");
         return mapToResponse(updated);
     }
 
@@ -86,6 +131,12 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
     @Override
     public List<MaintenanceResponse> getRequestsByRoomId(Integer roomId) {
         return maintenanceRepository.findByRoomId(roomId).stream()
+                .map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<MaintenanceResponse> getRequestsByReportedBy(Integer reportedBy) {
+        return maintenanceRepository.findByReportedBy(reportedBy).stream()
                 .map(this::mapToResponse).collect(Collectors.toList());
     }
 

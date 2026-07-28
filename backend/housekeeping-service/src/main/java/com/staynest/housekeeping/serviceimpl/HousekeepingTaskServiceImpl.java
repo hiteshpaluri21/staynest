@@ -21,6 +21,18 @@ import java.util.stream.Collectors;
 public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
 
     private final HousekeepingTaskRepository taskRepository;
+    private final com.staynest.housekeeping.client.NotificationServiceClient notificationServiceClient;
+
+    /** Fire-and-forget notification; a failure here must never fail the primary action. */
+    private void notify(Integer userId, String message) {
+        if (userId == null) return;
+        try {
+            notificationServiceClient.create(java.util.Map.of(
+                    "userId", userId, "category", "HOUSEKEEPING", "message", message));
+        } catch (Exception e) {
+            log.warn("Failed to send HOUSEKEEPING notification to user {}: {}", userId, e.getMessage());
+        }
+    }
 
     @Override
     public HousekeepingTaskResponse createTask(HousekeepingTaskRequest request) {
@@ -45,6 +57,8 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
         task.setStatus(TaskStatus.INPROGRESS);
         HousekeepingTask updated = taskRepository.save(task);
         log.info("Task {} assigned to staff {}", taskId, staffId);
+        notify(staffId, "You have been assigned housekeeping task #" + updated.getTaskId()
+                + " for room #" + updated.getRoomId() + ".");
         return mapToResponse(updated);
     }
 

@@ -16,6 +16,9 @@ export default function BookingConfirmModal({ data, onClose }) {
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true); setError('')
+    if (!data.type?.roomTypeId) {
+      setError('Room type is unavailable — please retry your search.'); setSaving(false); return
+    }
     try {
       await createReservation({
         guestId: user?.userId || 1,

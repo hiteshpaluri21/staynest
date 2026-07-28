@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ public class RatePlanController {
     private final RatePlanService ratePlanService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
     public ResponseEntity<ApiResponse<RatePlanResponse>> create(@Valid @RequestBody RatePlanRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("RatePlan created", ratePlanService.createRatePlan(request)));
@@ -39,11 +41,11 @@ public class RatePlanController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<RatePlanResponse>> getById(@PathVariable Integer id) {
-        return ResponseEntity.ok(ApiResponse.success(ratePlanService.getAllRatePlans().stream()
-                .filter(rp -> rp.getRatePlanId().equals(id)).findFirst().orElse(null)));
+        return ResponseEntity.ok(ApiResponse.success(ratePlanService.getRatePlanById(id)));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
     public ResponseEntity<ApiResponse<RatePlanResponse>> updateStatus(
             @PathVariable Integer id,
             @RequestParam RatePlanStatus status) {

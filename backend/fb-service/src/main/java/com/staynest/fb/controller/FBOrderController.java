@@ -55,6 +55,7 @@ public class FBOrderController {
     }
 
     @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER', 'FRONTDESK')")
     public ResponseEntity<ApiResponse<FBOrderResponse>> cancel(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success("Order cancelled", orderService.cancelOrder(id)));
     }

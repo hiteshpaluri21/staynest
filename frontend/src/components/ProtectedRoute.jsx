@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext.jsx'
 
 const ROLE_ACCESS = {
   ADMIN: ['*'],
-  GUEST: ['/book', '/my-reservations', '/profile', '/notifications'],
-  FRONTDESK: ['/book', '/my-reservations', '/profile', '/notifications', '/front-desk', '/stays'],
+  GUEST: ['/book', '/my-reservations', '/my-stay', '/profile', '/notifications', '/menu', '/rate-plans', '/maintenance'],
+  FRONTDESK: ['/book', '/my-reservations', '/reservations', '/profile', '/notifications', '/front-desk', '/stays', '/stay-records'],
   HOUSEKEEPING: ['/book', '/my-reservations', '/profile', '/notifications', '/housekeeping', '/maintenance'],
   FBMANAGER: ['/book', '/my-reservations', '/profile', '/notifications', '/menu', '/orders', '/dining-reservations'],
-  REVENUEMANAGER: ['/book', '/my-reservations', '/profile', '/notifications', '/analytics'],
+  REVENUEMANAGER: ['/book', '/my-reservations', '/profile', '/notifications', '/analytics', '/rate-plans'],
 }
 
 function hasAccess(role, path) {

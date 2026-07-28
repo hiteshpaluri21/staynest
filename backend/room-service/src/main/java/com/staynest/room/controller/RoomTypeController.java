@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class RoomTypeController {
     private final RoomTypeService roomTypeService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
     public ResponseEntity<ApiResponse<RoomTypeResponse>> create(@Valid @RequestBody RoomTypeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("RoomType created", roomTypeService.createRoomType(request)));
@@ -37,6 +39,7 @@ public class RoomTypeController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
     public ResponseEntity<ApiResponse<RoomTypeResponse>> updateStatus(
             @PathVariable Integer id,
             @RequestParam RatePlanStatus status) {

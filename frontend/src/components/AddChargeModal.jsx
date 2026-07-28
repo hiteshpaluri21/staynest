@@ -1,28 +1,41 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal, Form, Button, Alert } from 'react-bootstrap'
-import { postFolioItem } from '../services/fds/stayService'
+import { postFolioItem, updateFolioItem } from '../services/fds/stayService'
 import { useAuth } from '../context/AuthContext'
 
 const TYPES = ['ROOMRENT', 'FBCHARGE', 'LAUNDRY', 'SPA', 'TAX', 'DISCOUNT']
 
-export default function AddChargeModal({ show, stayId, onClose, onSaved }) {
+// `item` (optional) puts the modal in edit mode, pre-filled from the selected folio item.
+export default function AddChargeModal({ show, stayId, item, onClose, onSaved }) {
   const { user } = useAuth()
+  const isEdit = !!item
   const [form, setForm] = useState({ chargeType: 'FBCHARGE', description: '', amount: 0 })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  // Re-seed the form whenever the modal opens (fresh for add, pre-filled for edit).
+  useEffect(() => {
+    if (!show) return
+    setError('')
+    setForm(item
+      ? { chargeType: item.chargeType, description: item.description || '', amount: item.amount }
+      : { chargeType: 'FBCHARGE', description: '', amount: 0 })
+  }, [show, item])
+
   const submit = async (e) => {
     e.preventDefault(); setSaving(true); setError('')
     try {
-      await postFolioItem(stayId, { ...form, amount: Number(form.amount), postedBy: user?.userId || 1 })
+      const payload = { ...form, amount: Number(form.amount), postedBy: user?.userId || 1 }
+      if (isEdit) await updateFolioItem(stayId, item.folioItemId, payload)
+      else await postFolioItem(stayId, payload)
       onSaved()
     } catch (err) { setError(err.message) } finally { setSaving(false) }
   }
 
   return (
     <Modal show={show} onHide={onClose}>
-      <Modal.Header closeButton><Modal.Title>Add Folio Charge</Modal.Title></Modal.Header>
+      <Modal.Header closeButton><Modal.Title>{isEdit ? 'Edit Folio Charge' : 'Add Folio Charge'}</Modal.Title></Modal.Header>
       <Form onSubmit={submit}>
         <Modal.Body>
           {error && <Alert variant="danger" className="py-2">{error}</Alert>}
@@ -32,7 +45,7 @@ export default function AddChargeModal({ show, stayId, onClose, onSaved }) {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Posting…' : 'Post Charge'}</Button>
+          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Post Charge')}</Button>
         </Modal.Footer>
       </Form>
     </Modal>

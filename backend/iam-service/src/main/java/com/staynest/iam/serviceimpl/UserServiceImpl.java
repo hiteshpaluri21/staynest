@@ -77,6 +77,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public List<UserResponse> getActiveUsersByRole(com.staynest.iam.enums.Role role) {
+        return userRepository.findByRoleAndStatus(role, UserStatus.ACTIVE).stream()
+                .map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Override
     public UserResponse updateUserStatus(Integer id, UserStatus status) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));

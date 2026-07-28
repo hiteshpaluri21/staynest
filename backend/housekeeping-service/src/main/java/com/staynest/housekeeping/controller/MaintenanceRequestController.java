@@ -22,16 +22,22 @@ public class MaintenanceRequestController {
     private final MaintenanceRequestService maintenanceService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'HOUSEKEEPING')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'HOUSEKEEPING', 'GUEST')")
     public ResponseEntity<ApiResponse<MaintenanceResponse>> create(@Valid @RequestBody MaintenanceRequestDto request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Maintenance request created", maintenanceService.reportIssue(request)));
     }
 
+    // GUEST may list their own requests (must pass reportedBy); staff may list all / filter by room or status.
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOUSEKEEPING', 'GUEST')")
     public ResponseEntity<ApiResponse<List<MaintenanceResponse>>> getAll(
+            @RequestParam(required = false) Integer reportedBy,
             @RequestParam(required = false) Integer roomId,
             @RequestParam(required = false) MaintenanceStatus status) {
+        if (reportedBy != null) {
+            return ResponseEntity.ok(ApiResponse.success(maintenanceService.getRequestsByReportedBy(reportedBy)));
+        }
         if (roomId != null) {
             return ResponseEntity.ok(ApiResponse.success(maintenanceService.getRequestsByRoomId(roomId)));
         }
@@ -42,6 +48,7 @@ public class MaintenanceRequestController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOUSEKEEPING')")
     public ResponseEntity<ApiResponse<MaintenanceResponse>> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(maintenanceService.getRequestById(id)));
     }

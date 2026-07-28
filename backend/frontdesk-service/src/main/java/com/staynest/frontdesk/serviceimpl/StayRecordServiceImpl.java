@@ -33,6 +33,18 @@ public class StayRecordServiceImpl implements StayRecordService {
     private final FolioItemRepository folioItemRepository;
     private final RoomServiceClient roomServiceClient;
     private final ReservationServiceClient reservationServiceClient;
+    private final com.staynest.frontdesk.client.NotificationServiceClient notificationServiceClient;
+
+    /** Fire-and-forget notification; a failure here must never fail the primary action. */
+    private void notify(Integer userId, String message) {
+        if (userId == null) return;
+        try {
+            notificationServiceClient.create(java.util.Map.of(
+                    "userId", userId, "category", "FRONTDESK", "message", message));
+        } catch (Exception e) {
+            log.warn("Failed to send FRONTDESK notification to user {}: {}", userId, e.getMessage());
+        }
+    }
 
     @Override
     @Transactional
@@ -78,7 +90,7 @@ public class StayRecordServiceImpl implements StayRecordService {
         try {
             roomServiceClient.updateRoomStatus(request.getRoomId(), "OCCUPIED");
         } catch (Exception e) {
-            log.warn("Failed to update room status: {}", e.getMessage());
+            log.error("Failed to update room {} status to OCCUPIED on check-in", request.getRoomId(), e);
         }
 
         // Update reservation status to CHECKEDIN
@@ -87,6 +99,8 @@ public class StayRecordServiceImpl implements StayRecordService {
         } catch (Exception e) {
             log.warn("Failed to update reservation status: {}", e.getMessage());
         }
+
+        notify(guestId, "Welcome! You are checked in to room #" + request.getRoomId() + ".");
 
         log.info("Check-in completed for reservation: {}", request.getReservationId());
         return mapToResponse(saved);
@@ -112,10 +126,13 @@ public class StayRecordServiceImpl implements StayRecordService {
 
         folioItemRepository.save(item);
 
-        // Update folio balance
-        BigDecimal newBalance = stay.getFolioBalance().add(request.getAmount());
-        stay.setFolioBalance(newBalance);
+        // Update folio balance (a DISCOUNT reduces the balance).
+        BigDecimal current = stay.getFolioBalance() == null ? BigDecimal.ZERO : stay.getFolioBalance();
+        stay.setFolioBalance(current.add(FolioItemServiceImpl.signedAmount(request.getChargeType(), request.getAmount())));
         StayRecord updated = stayRecordRepository.save(stay);
+
+        notify(stay.getGuestId(), "A charge of " + request.getAmount() + " (" + request.getChargeType()
+                + ") was posted to your folio.");
 
         log.info("Folio item posted for stay: {}, amount: {}", stayId, request.getAmount());
         return mapToResponse(updated);
@@ -131,10 +148,10 @@ public class StayRecordServiceImpl implements StayRecordService {
             throw new BadRequestException("Stay is already checked out");
         }
 
-        // Sum all folio items
+        // Sum all folio items (a DISCOUNT reduces the total).
         List<FolioItem> items = folioItemRepository.findByStayRecord_StayId(stayId);
         BigDecimal total = items.stream()
-                .map(FolioItem::getAmount)
+                .map(fi -> FolioItemServiceImpl.signedAmount(fi.getChargeType(), fi.getAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         stay.setFolioBalance(total);
@@ -146,7 +163,7 @@ public class StayRecordServiceImpl implements StayRecordService {
         try {
             roomServiceClient.updateRoomStatus(stay.getAssignedRoomId(), "AVAILABLE");
         } catch (Exception e) {
-            log.warn("Failed to update room status: {}", e.getMessage());
+            log.error("Failed to update room {} status to AVAILABLE on check-out", stay.getAssignedRoomId(), e);
         }
 
         // Update reservation status to CHECKEDOUT
@@ -155,6 +172,8 @@ public class StayRecordServiceImpl implements StayRecordService {
         } catch (Exception e) {
             log.warn("Failed to update reservation status: {}", e.getMessage());
         }
+
+        notify(stay.getGuestId(), "You have been checked out. Final folio total: " + total + ".");
 
         log.info("Check-out completed for stay: {}, total folio: {}", stayId, total);
         return mapToResponse(updated);

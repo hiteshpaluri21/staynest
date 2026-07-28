@@ -1,14 +1,19 @@
 package com.staynest.fb.serviceimpl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.staynest.fb.client.FrontDeskServiceClient;
+import com.staynest.fb.dto.FBOrderItemResponse;
 import com.staynest.fb.dto.FBOrderRequest;
 import com.staynest.fb.dto.FBOrderResponse;
 import com.staynest.fb.entity.FBOrder;
+import com.staynest.fb.entity.MenuItem;
 import com.staynest.fb.enums.OrderStatus;
 import com.staynest.fb.exception.BadRequestException;
 import com.staynest.fb.exception.ResourceNotFoundException;
 import com.staynest.fb.repository.FBOrderRepository;
+import com.staynest.fb.repository.MenuItemRepository;
 import com.staynest.fb.service.FBOrderService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,11 +31,29 @@ import java.util.stream.Collectors;
 public class FBOrderServiceImpl implements FBOrderService {
 
     private final FBOrderRepository orderRepository;
+    private final MenuItemRepository menuItemRepository;
     private final FrontDeskServiceClient frontDeskClient;
+    private final com.staynest.fb.client.NotificationServiceClient notificationServiceClient;
+    private final ObjectMapper objectMapper;
+
+    /** Fire-and-forget notification; a failure here must never fail the primary action. */
+    private void notify(Integer userId, String message) {
+        if (userId == null) return;
+        try {
+            notificationServiceClient.create(java.util.Map.of(
+                    "userId", userId, "category", "FB", "message", message));
+        } catch (Exception e) {
+            log.warn("Failed to send FB notification to user {}: {}", userId, e.getMessage());
+        }
+    }
 
     @Override
     @Transactional
     public FBOrderResponse placeOrder(FBOrderRequest request) {
+        // An order must be attached to a real stay — reject unknown/invalid stayIds instead of
+        // silently creating orphaned orders.
+        validateStay(request.getStayId());
+
         // Calculate total from itemsJSON (simplified - parse JSON in real scenario)
         BigDecimal totalAmount = calculateTotal(request.getItemsJson());
 
@@ -44,6 +67,8 @@ public class FBOrderServiceImpl implements FBOrderService {
 
         FBOrder saved = orderRepository.save(order);
         log.info("Order placed: {}", saved.getOrderId());
+        notify(request.getPlacedBy(), "Your F&B order #" + saved.getOrderId()
+                + " has been placed. Total: " + totalAmount + ".");
         return mapToResponse(saved);
     }
 
@@ -120,9 +145,72 @@ public class FBOrderServiceImpl implements FBOrderService {
                 .map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    /**
+     * Computes the order total from the cart JSON produced by the frontend, which is a JSON array
+     * of {@code {"itemId": <menuItemId>, "qty": <quantity>}} entries, by summing
+     * {@code menuItem.price * qty} for each line.
+     */
+    /**
+     * Confirms the order's stayId maps to a real stay in frontdesk-service and that the stay is
+     * still open. Rejects unknown stays (404) and closed/checked-out stays so orders can't be
+     * allocated to non-existent or departed stays.
+     */
+    private void validateStay(Integer stayId) {
+        if (stayId == null) {
+            throw new BadRequestException("StayId is required");
+        }
+        Map<String, Object> stay;
+        try {
+            var resp = frontDeskClient.getStayById(stayId);
+            stay = resp != null ? resp.getData() : null;
+        } catch (FeignException.NotFound e) {
+            throw new BadRequestException("Invalid StayId: " + stayId + " (no such stay)");
+        } catch (Exception e) {
+            log.error("frontdesk-service call failed while validating StayId {}", stayId, e);
+            throw new BadRequestException("Unable to validate StayId " + stayId
+                    + " (frontdesk-service error: " + e.getMessage() + ")");
+        }
+        if (stay == null) {
+            throw new BadRequestException("Invalid StayId: " + stayId + " (no such stay)");
+        }
+        Object status = stay.get("status");
+        if (status != null && "CHECKEDOUT".equalsIgnoreCase(status.toString())) {
+            throw new BadRequestException("Cannot place an F&B order for stay " + stayId
+                    + " — the guest has already checked out");
+        }
+    }
+
     private BigDecimal calculateTotal(String itemsJson) {
-        // Simplified: In real scenario, parse JSON and lookup menu item prices
-        return new BigDecimal("500.00");
+        if (itemsJson == null || itemsJson.isBlank()) {
+            throw new BadRequestException("Order must contain at least one item");
+        }
+        List<Map<String, Object>> items;
+        try {
+            items = objectMapper.readValue(itemsJson, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid items payload: " + e.getMessage());
+        }
+        if (items.isEmpty()) {
+            throw new BadRequestException("Order must contain at least one item");
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map<String, Object> line : items) {
+            Object rawId = line.get("itemId");
+            Object rawQty = line.get("qty");
+            if (rawId == null || rawQty == null) {
+                throw new BadRequestException("Each order line must include itemId and qty");
+            }
+            Integer itemId = ((Number) rawId).intValue();
+            int qty = ((Number) rawQty).intValue();
+            if (qty <= 0) {
+                throw new BadRequestException("Quantity must be positive for item " + itemId);
+            }
+            MenuItem menuItem = menuItemRepository.findById(itemId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Menu item not found: " + itemId));
+            total = total.add(menuItem.getPrice().multiply(BigDecimal.valueOf(qty)));
+        }
+        return total;
     }
 
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {
@@ -141,9 +229,50 @@ public class FBOrderServiceImpl implements FBOrderService {
                 .tableNumber(order.getTableNumber())
                 .orderType(order.getOrderType())
                 .itemsJson(order.getItemsJson())
+                .items(buildItemResponses(order.getItemsJson()))
                 .totalAmount(order.getTotalAmount())
                 .orderTime(order.getOrderTime())
                 .status(order.getStatus())
                 .build();
+    }
+
+    /**
+     * Resolves the stored cart JSON into a structured, human-readable line list
+     * (item name, quantity, unit price, line total) so clients render items instead
+     * of a raw JSON blob. Returns an empty list if the payload is missing or unparseable.
+     */
+    private List<FBOrderItemResponse> buildItemResponses(String itemsJson) {
+        if (itemsJson == null || itemsJson.isBlank()) {
+            return List.of();
+        }
+        List<Map<String, Object>> lines;
+        try {
+            lines = objectMapper.readValue(itemsJson, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            log.warn("Could not parse itemsJson for order response: {}", e.getMessage());
+            return List.of();
+        }
+
+        List<FBOrderItemResponse> result = new java.util.ArrayList<>();
+        for (Map<String, Object> line : lines) {
+            Object rawId = line.get("itemId");
+            Object rawQty = line.get("qty");
+            if (rawId == null || rawQty == null) {
+                continue;
+            }
+            Integer itemId = ((Number) rawId).intValue();
+            int qty = ((Number) rawQty).intValue();
+            MenuItem menuItem = menuItemRepository.findById(itemId).orElse(null);
+            String name = menuItem != null ? menuItem.getName() : "Item #" + itemId;
+            BigDecimal unitPrice = menuItem != null ? menuItem.getPrice() : BigDecimal.ZERO;
+            result.add(FBOrderItemResponse.builder()
+                    .menuItemId(itemId)
+                    .name(name)
+                    .qty(qty)
+                    .unitPrice(unitPrice)
+                    .lineTotal(unitPrice.multiply(BigDecimal.valueOf(qty)))
+                    .build());
+        }
+        return result;
     }
 }

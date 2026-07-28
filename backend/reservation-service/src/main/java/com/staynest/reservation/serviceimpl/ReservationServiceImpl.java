@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,19 +37,58 @@ public class ReservationServiceImpl implements ReservationService {
     @Autowired
     private RoomServiceClient roomServiceClient;
 
+    @Autowired
+    private com.staynest.reservation.client.IamServiceClient iamServiceClient;
+
+    @Autowired
+    private com.staynest.reservation.client.NotificationServiceClient notificationServiceClient;
+
+    /** Fire-and-forget notification; a failure here must never fail the primary action. */
+    private void notify(Integer userId, String category, String message) {
+        if (userId == null) return;
+        try {
+            notificationServiceClient.create(java.util.Map.of(
+                    "userId", userId, "category", category, "message", message));
+        } catch (Exception e) {
+            log.warn("Failed to send {} notification to user {}: {}", category, userId, e.getMessage());
+        }
+    }
+
+    /** Fan out a notification to every active staff member of a role. Best-effort. */
+    private void notifyStaffByRole(String role, String category, String message) {
+        try {
+            var resp = iamServiceClient.getUsersByRole(role);
+            var staff = resp != null ? resp.getData() : null;
+            if (staff == null) return;
+            for (var u : staff) {
+                Object id = u.get("userId");
+                if (id instanceof Number n) {
+                    notify(n.intValue(), category, message);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to resolve {} staff for notification: {}", role, e.getMessage());
+        }
+    }
+
     @Override
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request) {
         // Validate guest exists or auto-create GuestProfile for new guest matching request.getGuestId()
         GuestProfile guest = guestProfileRepository.findById(request.getGuestId())
                 .orElseGet(() -> {
-                    String email = "guest" + request.getGuestId() + "@staynest.com";
-                    return guestProfileRepository.findByEmail(email)
+                    String fallbackEmail = "guest" + request.getGuestId() + "@staynest.com";
+                    // Prefer the acting user's real IAM name/email; fall back to a placeholder
+                    // if the identity can't be resolved (e.g. staff booking on someone's behalf).
+                    String[] identity = resolveGuestIdentity(request.getGuestId(), fallbackEmail);
+                    String realName = identity[0];
+                    String realEmail = identity[1];
+                    return guestProfileRepository.findByEmail(realEmail)
                             .orElseGet(() -> {
-                                log.info("GuestProfile not found for guestId {}, creating default guest profile", request.getGuestId());
+                                log.info("GuestProfile not found for guestId {}, creating profile ({})", request.getGuestId(), realName);
                                 GuestProfile gp = new GuestProfile();
-                                gp.setName("Guest #" + request.getGuestId());
-                                gp.setEmail(email);
+                                gp.setName(realName);
+                                gp.setEmail(realEmail);
                                 gp.setStatus(com.staynest.reservation.enums.GuestStatus.ACTIVE);
                                 gp.setLoyaltyTier(com.staynest.reservation.enums.LoyaltyTier.NONE);
                                 return guestProfileRepository.save(gp);
@@ -122,13 +162,20 @@ public class ReservationServiceImpl implements ReservationService {
             finalRatePlanId = 1;
         }
 
+        // Derive nights from the dates rather than trusting the client-supplied value.
+        if (request.getCheckOutDate() == null || request.getCheckInDate() == null
+                || !request.getCheckOutDate().isAfter(request.getCheckInDate())) {
+            throw new BadRequestException("Check-out date must be after check-in date");
+        }
+        int nights = (int) ChronoUnit.DAYS.between(request.getCheckInDate(), request.getCheckOutDate());
+
         Reservation reservation = new Reservation();
         reservation.setGuest(guest);
         reservation.setRoomTypeId(request.getRoomTypeId());
         reservation.setRatePlanId(finalRatePlanId);
         reservation.setCheckInDate(request.getCheckInDate());
         reservation.setCheckOutDate(request.getCheckOutDate());
-        reservation.setNights(request.getNights());
+        reservation.setNights(nights);
         reservation.setAdults(request.getAdults());
         reservation.setChildren(request.getChildren() != null ? request.getChildren() : 0);
         reservation.setTotalAmount(request.getTotalAmount());
@@ -137,6 +184,13 @@ public class ReservationServiceImpl implements ReservationService {
 
         Reservation saved = reservationRepository.save(reservation);
         log.info("Reservation created: {}", saved.getReservationId());
+        notify(guest.getGuestId(), "RESERVATION",
+                "Your reservation #" + saved.getReservationId() + " is confirmed for "
+                        + saved.getCheckInDate() + " to " + saved.getCheckOutDate() + ".");
+        // Alert front-desk staff of the new booking so it appears in their inbox.
+        notifyStaffByRole("FRONTDESK", "FRONTDESK",
+                "New reservation #" + saved.getReservationId() + " (" + guest.getName() + ") for "
+                        + saved.getCheckInDate() + " to " + saved.getCheckOutDate() + ".");
         return mapToResponse(saved);
     }
 
@@ -175,8 +229,13 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public List<ReservationResponse> getUpcomingReservations(LocalDate date) {
-        return reservationRepository.findByCheckInDateBetween(date, date.plusDays(30)).stream()
-                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED)
+        // Upcoming arrivals = every reservation still expected to arrive on/after the given date.
+        // Previously this was capped at a 30-day window and excluded CHECKEDIN, so confirmed
+        // reservations beyond 30 days (or already checked in) went missing from the arrivals list
+        // even though they appeared under "Confirmed".
+        return reservationRepository.findByCheckInDateGreaterThanEqual(date).stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED
+                        || r.getStatus() == ReservationStatus.CHECKEDIN)
                 .map(this::mapToResponse).collect(Collectors.toList());
     }
 
@@ -205,6 +264,39 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation updated = reservationRepository.save(reservation);
         log.info("Reservation {} status updated to {}", id, status);
         return mapToResponse(updated);
+    }
+
+    /**
+     * Resolves the real name/email for an auto-created guest profile from IAM, using the
+     * currently authenticated user's email (the JWT subject). Only trusted when the resolved
+     * IAM userId matches the requested guestId, so a staff member booking on someone's behalf
+     * doesn't stamp their own name onto the guest. Returns {name, email}, falling back to a
+     * "Guest #<id>" placeholder and synthetic email when identity can't be confirmed.
+     */
+    private String[] resolveGuestIdentity(Integer guestId, String fallbackEmail) {
+        String name = "Guest #" + guestId;
+        String email = fallbackEmail;
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
+                var resp = iamServiceClient.getUserByEmail(auth.getName());
+                if (resp != null && resp.getData() != null) {
+                    java.util.Map<String, Object> u = resp.getData();
+                    Object uid = u.get("userId");
+                    if (uid != null && Integer.parseInt(uid.toString()) == guestId) {
+                        if (u.get("name") != null && !u.get("name").toString().isBlank()) {
+                            name = u.get("name").toString();
+                        }
+                        if (u.get("email") != null && !u.get("email").toString().isBlank()) {
+                            email = u.get("email").toString();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve real identity for guestId {}: {}", guestId, e.getMessage());
+        }
+        return new String[]{name, email};
     }
 
     private ReservationResponse mapToResponse(Reservation r) {

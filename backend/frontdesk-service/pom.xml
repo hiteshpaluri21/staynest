@@ -56,6 +56,15 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
 		</dependency>
+		<!--
+			Apache HttpClient 5 backend for Feign. The default HttpURLConnection
+			client cannot send HTTP PATCH (throws "Invalid HTTP method: PATCH"),
+			which silently broke room-status updates on check-in/check-out.
+		-->
+		<dependency>
+			<groupId>io.github.openfeign</groupId>
+			<artifactId>feign-hc5</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

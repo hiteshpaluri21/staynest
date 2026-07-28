@@ -14,12 +14,15 @@ export default function StayDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [editItem, setEditItem] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const [s, it] = await Promise.all([getStayById(stayId), getFolioItems(stayId)])
-      setStay(s); setItems(it)
+      // Load the stay and its folio independently: a folio-items failure should not
+      // blank out the stay details, and vice-versa.
+      const [s, it] = await Promise.all([getStayById(stayId), getFolioItems(stayId).catch(() => [])])
+      setStay(s); setItems(it || [])
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [stayId])
@@ -65,7 +68,7 @@ export default function StayDetailPage() {
             <Card.Body>
               {items.length === 0 ? <p className="text-muted">No charges posted yet.</p> :
                 <Table hover size="sm">
-                  <thead><tr><th>Type</th><th>Description</th><th>Amount</th><th>Posted</th></tr></thead>
+                  <thead><tr><th>Type</th><th>Description</th><th>Amount</th><th>Posted</th>{stay.status === 'ACTIVE' && <th></th>}</tr></thead>
                   <tbody>
                     {items.map(it => (
                       <tr key={it.folioItemId}>
@@ -73,6 +76,11 @@ export default function StayDetailPage() {
                         <td>{it.description}</td>
                         <td>₹{it.amount}</td>
                         <td className="small">{it.postedDate}</td>
+                        {stay.status === 'ACTIVE' && (
+                          <td className="text-end">
+                            <Button size="sm" variant="outline-secondary" onClick={() => setEditItem(it)}>Edit</Button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -83,6 +91,7 @@ export default function StayDetailPage() {
         </Col>
       </Row>
       <AddChargeModal show={showAdd} stayId={stay.stayId} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />
+      <AddChargeModal show={!!editItem} stayId={stay.stayId} item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load() }} />
     </div>
   )
 }

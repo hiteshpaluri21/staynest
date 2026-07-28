@@ -6,8 +6,10 @@ import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import UserFormModal from '../../components/UserFormModal'
 import { roleBadge, statusBadge } from '../../utils/badges'
+import { useAuth } from '../../context/AuthContext'
 
 export default function UserListPage() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -24,6 +26,10 @@ export default function UserListPage() {
 
   const toggleStatus = async (u) => {
     const next = u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+    if (next === 'INACTIVE' && u.userId === currentUser?.userId) {
+      alert('You cannot deactivate your own account')
+      return
+    }
     try { await updateUserStatus(u.userId, next); load() }
     catch (e) { alert(e.message) }
   }
@@ -69,7 +75,13 @@ export default function UserListPage() {
                         <td>{u.phone || '—'}</td>
                         <td><Badge bg={statusBadge(u.status)}>{u.status}</Badge></td>
                         <td>
-                          <Button size="sm" variant={u.status === 'ACTIVE' ? 'outline-danger' : 'outline-success'} onClick={() => toggleStatus(u)}>
+                          <Button
+                            size="sm"
+                            variant={u.status === 'ACTIVE' ? 'outline-danger' : 'outline-success'}
+                            onClick={() => toggleStatus(u)}
+                            disabled={u.status === 'ACTIVE' && u.userId === currentUser?.userId}
+                            title={u.status === 'ACTIVE' && u.userId === currentUser?.userId ? 'You cannot deactivate your own account' : ''}
+                          >
                             {u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                           </Button>
                         </td>

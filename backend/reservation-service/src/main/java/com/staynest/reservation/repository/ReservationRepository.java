@@ -17,6 +17,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
     List<Reservation> findByStatus(ReservationStatus status);
     List<Reservation> findByCheckInDate(LocalDate checkInDate);
     List<Reservation> findByCheckInDateBetween(LocalDate start, LocalDate end);
+    List<Reservation> findByCheckInDateGreaterThanEqual(LocalDate date);
 
     @Query("SELECT r FROM Reservation r WHERE r.roomTypeId = :roomTypeId AND r.status IN (com.staynest.reservation.enums.ReservationStatus.CONFIRMED, com.staynest.reservation.enums.ReservationStatus.CHECKEDIN) AND r.checkInDate < :checkOutDate AND r.checkOutDate > :checkInDate")
     List<Reservation> findOverlappingReservations(

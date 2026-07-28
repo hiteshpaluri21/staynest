@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,6 +17,7 @@ public class FBOrderResponse {
     private String tableNumber;
     private OrderType orderType;
     private String itemsJson;
+    private List<FBOrderItemResponse> items;
     private BigDecimal totalAmount;
     private LocalDateTime orderTime;
     private OrderStatus status;

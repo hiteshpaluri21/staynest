@@ -66,9 +66,9 @@ public class AuthController {
             return ResponseEntity.status(400).body(ApiResponse.error("Email is already registered. Please log in."));
         }
 
-        if (request.getRole() == null) {
-            request.setRole(com.staynest.iam.enums.Role.GUEST);
-        }
+        // Public self-registration must never let a client choose a privileged role.
+        // Force GUEST regardless of what the request body supplies.
+        request.setRole(com.staynest.iam.enums.Role.GUEST);
 
         UserResponse created = userService.createUser(request);
         String token = jwtUtil.generateToken(created.getEmail(), created.getRole().name());

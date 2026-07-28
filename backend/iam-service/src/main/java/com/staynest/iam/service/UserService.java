@@ -13,6 +13,7 @@ public interface UserService {
     UserResponse getUserByEmail(String email);
     List<UserResponse> getAllUsers();
     List<UserResponse> getUsersByStatus(UserStatus status);
+    List<UserResponse> getActiveUsersByRole(com.staynest.iam.enums.Role role);
     UserResponse updateUserStatus(Integer id, UserStatus status);
     void deleteUser(Integer id);
 }

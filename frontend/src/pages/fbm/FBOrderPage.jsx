@@ -8,6 +8,7 @@ import EmptyState from '../../components/EmptyState'
 import { statusBadge } from '../../utils/badges'
 
 const NEXT = { PLACED: 'PREPARING', PREPARING: 'SERVED', SERVED: 'BILLED' }
+const MENU_CATEGORIES = ['BREAKFAST', 'MAINCOURSE', 'BEVERAGE', 'DESSERT']
 
 export default function FBOrderPage() {
   const { user } = useAuth()
@@ -16,6 +17,7 @@ export default function FBOrderPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [form, setForm] = useState({ stayId: '', tableNumber: '', orderType: 'DINEIN', cart: {} })
+  const [menuCat, setMenuCat] = useState('BREAKFAST')
   const [submitErr, setSubmitErr] = useState('')
 
   const load = async () => {
@@ -79,13 +81,23 @@ export default function FBOrderPage() {
                     <option value="TAKEAWAY">Takeaway</option>
                   </Form.Select>
                 </Form.Group>
+                <Form.Group className="mb-2">
+                  <Form.Label>Category</Form.Label>
+                  <Form.Select value={menuCat} onChange={e => setMenuCat(e.target.value)}>
+                    {MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </Form.Select>
+                </Form.Group>
                 <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                  {menu.map(m => (
-                    <div key={m.menuItemId} className="d-flex justify-content-between align-items-center py-1 border-bottom">
-                      <div><strong>{m.name}</strong> <span className="text-muted small">₹{m.price}</span></div>
-                      <Form.Control type="number" min="0" style={{ width: 70 }} value={form.cart[m.menuItemId] || ''} onChange={e => setQty(m.menuItemId, e.target.value)} />
-                    </div>
-                  ))}
+                  {(() => {
+                    const shown = menu.filter(m => m.category === menuCat)
+                    if (shown.length === 0) return <p className="text-muted small mb-0">No items in this category.</p>
+                    return shown.map(m => (
+                      <div key={m.menuItemId} className="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div><strong>{m.name}</strong> <span className="text-muted small">₹{m.price}</span></div>
+                        <Form.Control type="number" min="0" style={{ width: 70 }} value={form.cart[m.menuItemId] || ''} onChange={e => setQty(m.menuItemId, e.target.value)} />
+                      </div>
+                    ))
+                  })()}
                 </div>
                 <div className="d-flex justify-content-between mt-2">
                   <strong>Total</strong><strong className="text-primary">₹{total}</strong>
@@ -107,7 +119,11 @@ export default function FBOrderPage() {
                       <tr key={o.orderId}>
                         <td>#{o.orderId}</td>
                         <td><Badge bg="info">{o.orderType}</Badge></td>
-                        <td className="small">{o.itemsJson}</td>
+                        <td className="small">
+                          {o.items && o.items.length
+                            ? o.items.map(i => `${i.name} ×${i.qty}`).join(', ')
+                            : o.itemsJson}
+                        </td>
                         <td>₹{o.totalAmount}</td>
                         <td><Badge bg={statusBadge(o.status)}>{o.status}</Badge></td>
                         <td>

@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface MenuItemService {
     MenuItemResponse addMenuItem(MenuItemRequest request);
+    MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request);
     MenuItemResponse getMenuItemById(Integer id);
     List<MenuItemResponse> getAllMenuItems();
     List<MenuItemResponse> getMenuItemsByCategory(MenuCategory category);

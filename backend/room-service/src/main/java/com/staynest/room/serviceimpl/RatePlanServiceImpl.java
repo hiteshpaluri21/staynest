@@ -35,6 +35,10 @@ public class RatePlanServiceImpl implements RatePlanService {
 		RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
 				.orElseThrow(() -> new BadRequestException("Invalid RoomTypeId: " + request.getRoomTypeId()));
 
+		if (request.getValidTo().isBefore(request.getValidFrom())) {
+			throw new BadRequestException("validTo must be on or after validFrom");
+		}
+
 		RatePlan ratePlan = new RatePlan();
 		ratePlan.setRoomType(roomType);
 		ratePlan.setName(request.getName());
@@ -47,6 +51,13 @@ public class RatePlanServiceImpl implements RatePlanService {
 		RatePlan saved = ratePlanRepository.save(ratePlan);
 		log.info("RatePlan created: {}", saved.getRatePlanId());
 		return mapToResponse(saved);
+	}
+
+	@Override
+	public RatePlanResponse getRatePlanById(Integer id) {
+		RatePlan ratePlan = ratePlanRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("RatePlan not found: " + id));
+		return mapToResponse(ratePlan);
 	}
 
 	@Override

@@ -65,6 +65,16 @@ public class StayRecordController {
         return ResponseEntity.ok(ApiResponse.success(folioItemService.getFolioItemsByStayId(id)));
     }
 
+    @PutMapping("/{id}/folio-items/{folioItemId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'FBMANAGER')")
+    public ResponseEntity<ApiResponse<com.staynest.frontdesk.dto.FolioItemResponse>> updateFolioItem(
+            @PathVariable Integer id,
+            @PathVariable Integer folioItemId,
+            @Valid @RequestBody FolioItemRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Folio item updated",
+                folioItemService.updateFolioItem(folioItemId, request)));
+    }
+
     @PostMapping("/{id}/checkout")
     @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
     public ResponseEntity<ApiResponse<StayRecordResponse>> checkOut(@PathVariable Integer id) {

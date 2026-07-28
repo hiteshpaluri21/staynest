@@ -36,6 +36,19 @@ public class MenuItemServiceImpl implements MenuItemService {
     }
 
     @Override
+    public MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request) {
+        MenuItem item = menuItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("MenuItem not found: " + id));
+        item.setName(request.getName());
+        item.setCategory(request.getCategory());
+        item.setPrice(request.getPrice());
+        item.setDietaryTags(request.getDietaryTags());
+        MenuItem updated = menuItemRepository.save(item);
+        log.info("MenuItem {} updated", id);
+        return mapToResponse(updated);
+    }
+
+    @Override
     public MenuItemResponse getMenuItemById(Integer id) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MenuItem not found: " + id));

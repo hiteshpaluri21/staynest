@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Row, Col, Card, Button, Badge } from 'react-bootstrap'
+import { Row, Col, Card, Button, Badge, Modal, Form, Alert } from 'react-bootstrap'
 import { getTasks, updateTaskStatus, createTask } from '../../services/hkm/taskService'
+import { getRooms } from '../../services/ric/roomService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 
@@ -10,14 +11,23 @@ const COLUMNS = [
   { key: 'DONE', label: 'Done', color: '#16a34a' },
 ]
 
+const TASK_TYPES = ['CHECKOUT', 'STAYOVERSERVICE', 'TURNDOWN', 'DEEPCLEAN']
+
 export default function HousekeepingPage() {
   const [tasks, setTasks] = useState([])
+  const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [show, setShow] = useState(false)
+  const [form, setForm] = useState({ roomId: '', taskType: 'STAYOVERSERVICE' })
+  const [saveErr, setSaveErr] = useState('')
 
   const load = async () => {
     setLoading(true); setError('')
-    try { setTasks(await getTasks()) } catch (e) { setError(e.message) } finally { setLoading(false) }
+    try {
+      const [ts, rs] = await Promise.all([getTasks(), getRooms().catch(() => [])])
+      setTasks(ts); setRooms(rs || [])
+    } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
 
@@ -26,17 +36,24 @@ export default function HousekeepingPage() {
     catch (e) { alert(e.message) }
   }
 
+  const openCreate = () => { setSaveErr(''); setForm({ roomId: '', taskType: 'STAYOVERSERVICE' }); setShow(true) }
+
+  const submit = async (e) => {
+    e.preventDefault(); setSaveErr('')
+    if (!form.roomId) { setSaveErr('Please select a room'); return }
+    try {
+      await createTask({ roomId: Number(form.roomId), taskType: form.taskType })
+      setShow(false); load()
+    } catch (err) { setSaveErr(err.message) }
+  }
+
   const grouped = (status) => tasks.filter(t => t.status === status)
 
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h4 className="mb-0">Housekeeping Task Board</h4>
-        <Button variant="outline-success" size="sm" onClick={() => {
-          const roomId = Number(prompt('Room ID?'))
-          if (!roomId) return
-          createTask({ roomId, taskType: 'STAYOVERSERVICE' }).then(load).catch(e => alert(e.message))
-        }}>+ Quick Task</Button>
+        <Button variant="outline-success" size="sm" onClick={openCreate}>+ Quick Task</Button>
       </div>
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         <Row>
@@ -66,6 +83,36 @@ export default function HousekeepingPage() {
           ))}
         </Row>
       }
+
+      <Modal show={show} onHide={() => setShow(false)}>
+        <Modal.Header closeButton><Modal.Title>New Housekeeping Task</Modal.Title></Modal.Header>
+        <Form onSubmit={submit}>
+          <Modal.Body>
+            {saveErr && <Alert variant="danger" className="py-2">{saveErr}</Alert>}
+            <Form.Group className="mb-3">
+              <Form.Label>Room</Form.Label>
+              <Form.Select required value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))}>
+                <option value="">Select a room…</option>
+                {rooms.map(r => (
+                  <option key={r.roomId} value={r.roomId}>
+                    Room #{r.roomNumber ?? r.roomId}{r.status ? ` — ${r.status}` : ''}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Task Type</Form.Label>
+              <Form.Select value={form.taskType} onChange={e => setForm(f => ({ ...f, taskType: e.target.value }))}>
+                {TASK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </Form.Select>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShow(false)}>Cancel</Button>
+            <Button type="submit" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Create Task</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   )
 }

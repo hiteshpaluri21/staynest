@@ -14,4 +14,5 @@ public interface MaintenanceRequestService {
     List<MaintenanceResponse> getAllRequests();
     List<MaintenanceResponse> getRequestsByStatus(MaintenanceStatus status);
     List<MaintenanceResponse> getRequestsByRoomId(Integer roomId);
+    List<MaintenanceResponse> getRequestsByReportedBy(Integer reportedBy);
 }
