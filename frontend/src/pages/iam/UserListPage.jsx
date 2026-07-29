@@ -17,7 +17,8 @@ export default function UserListPage() {
   const [showModal, setShowModal] = useState(false)
 
   const load = async () => {
-    setLoading(true); setError('')
+    setLoading(true); 
+    setError('')
     try { setUsers(await getUsers()) }
     catch (e) { setError(e.message) }
     finally { setLoading(false) }

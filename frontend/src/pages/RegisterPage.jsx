@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap'
 import { useNavigate, Link } from 'react-router-dom'
-import { api, unwrap } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 
 export default function RegisterPage() {
@@ -38,14 +37,27 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await api.post('/api/auth/register', {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        password: form.password,
-        role: 'GUEST'
+      const headers = { 'Content-Type': 'application/json' }
+      const token = localStorage.getItem('token') || ''
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+          role: 'GUEST'
+        }),
       })
-      const data = unwrap(res)
+      const ct = res.headers.get('content-type') || ''
+      const payload = ct.includes('application/json') ? await res.json() : await res.text()
+      if (!res.ok) {
+        const msg = (payload && typeof payload === 'object' && (payload.message || payload.error)) || (typeof payload === 'string' && payload) || `Request failed (${res.status})`
+        throw new Error(msg)
+      }
+      const data = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
       login(data)
       navigate('/book')
     } catch (err) {

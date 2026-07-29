@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useNavigate, Link } from 'react-router-dom'
-import { api, unwrap } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
+  
   const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -17,8 +17,21 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await api.post('/api/auth/login', { email, password })
-      const data = unwrap(res)
+      const headers = { 'Content-Type': 'application/json' }
+      const token = localStorage.getItem('token') || ''
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email, password }),
+      })
+      const ct = res.headers.get('content-type') || ''
+      const payload = ct.includes('application/json') ? await res.json() : await res.text()
+      if (!res.ok) {
+        const msg = (payload && typeof payload === 'object' && (payload.message || payload.error)) || (typeof payload === 'string' && payload) || `Request failed (${res.status})`
+        throw new Error(msg)
+      }
+      const data = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
       login(data)
       const role = data.role
       const home =
@@ -26,8 +39,7 @@ export default function LoginPage() {
         role === 'FRONTDESK' ? '/front-desk' :
         role === 'HOUSEKEEPING' ? '/housekeeping' :
         role === 'FBMANAGER' ? '/orders' :
-        role === 'REVENUEMANAGER' ? '/analytics' :
-        '/book'
+        role === 'REVENUEMANAGER' ? '/analytics' : '/book'
       navigate(home)
     } catch (err) {
       setError(err.message || 'Login failed')
