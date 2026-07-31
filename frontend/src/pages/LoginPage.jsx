@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
-  
+
   const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -36,10 +36,10 @@ export default function LoginPage() {
       const role = data.role
       const home =
         role === 'ADMIN' ? '/users' :
-        role === 'FRONTDESK' ? '/front-desk' :
-        role === 'HOUSEKEEPING' ? '/housekeeping' :
-        role === 'FBMANAGER' ? '/orders' :
-        role === 'REVENUEMANAGER' ? '/analytics' : '/book'
+          role === 'FRONTDESK' ? '/front-desk' :
+            role === 'HOUSEKEEPING' ? '/housekeeping' :
+              role === 'FBMANAGER' ? '/orders' :
+                role === 'REVENUEMANAGER' ? '/analytics' : '/book'
       navigate(home)
     } catch (err) {
       setError(err.message || 'Login failed')

@@ -11,7 +11,6 @@ import java.util.Map;
 @FeignClient(name = "RESERVATION-SERVICE")
 public interface ReservationServiceClient {
 
-    @GetMapping("/api/reservations")
-    ApiResponse<List<Map<String, Object>>> getAllReservations(
-            @RequestParam(required = false) String status);
+	@GetMapping("/api/reservations")
+	ApiResponse<List<Map<String, Object>>> getAllReservations(@RequestParam(required = false) String status);
 }
