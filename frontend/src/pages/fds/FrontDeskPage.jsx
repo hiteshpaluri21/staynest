@@ -51,7 +51,7 @@ export default function FrontDeskPage() {
                         const isCheckedIn = activeResIds.has(r.reservationId) || r.status === 'CHECKEDIN'
                         return (
                           <tr key={r.reservationId}>
-                            <td>#{r.reservationId}</td>
+                            <td>{r.reservationId}</td>
                             <td>{r.guestName}</td>
                             <td>{r.checkInDate}</td>
                             <td>{r.nights}</td>
@@ -83,7 +83,7 @@ export default function FrontDeskPage() {
                     <tbody>
                       {stays.map(s => (
                         <tr key={s.stayId}>
-                          <td>#{s.stayId}</td>
+                          <td>{s.stayId}</td>
                           <td>{s.assignedRoomId}</td>
                           <td>₹{s.folioBalance}</td>
                           <td><Button as={Link} to={`/stays/${s.stayId}`} size="sm" variant="outline-primary">Folio</Button></td>
