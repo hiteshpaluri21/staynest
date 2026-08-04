@@ -40,7 +40,7 @@ export default function GuestProfilePage() {
           <div className="d-flex justify-content-between align-items-start">
             <div>
               <h5 className="mb-1">
-                {user?.name || guest?.name || 'User'} 
+                {user?.name || 'User'}
                 {guest?.loyaltyTier ? (
                   <Badge bg={loyaltyBadge(guest.loyaltyTier)} className="ms-2">{guest.loyaltyTier}</Badge>
                 ) : (
@@ -50,7 +50,7 @@ export default function GuestProfilePage() {
               <p className="text-muted small mb-0">{user?.email || guest?.email}</p>
             </div>
             {guest && (
-              <Button variant="outline-primary" size="sm" onClick={() => setShowModal(true)}>Edit Guest Details</Button>
+              <Button variant="outline-primary" size="sm" onClick={() => setShowModal(true)}>Edit details</Button>
             )}
           </div>
           <div className="row mt-4">

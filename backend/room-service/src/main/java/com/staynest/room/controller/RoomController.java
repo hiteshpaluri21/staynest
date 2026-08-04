@@ -22,7 +22,7 @@ public class RoomController {
     private final RoomService roomService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RoomResponse>> create(@Valid @RequestBody RoomRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Room created", roomService.addRoom(request)));
@@ -54,7 +54,7 @@ public class RoomController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER', 'FRONTDESK', 'HOUSEKEEPING')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'HOUSEKEEPING')")
     public ResponseEntity<ApiResponse<RoomResponse>> updateStatus(
             @PathVariable Integer id,
             @RequestParam RoomStatus status) {

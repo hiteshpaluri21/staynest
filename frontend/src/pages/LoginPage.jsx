@@ -38,8 +38,7 @@ export default function LoginPage() {
         role === 'ADMIN' ? '/users' :
           role === 'FRONTDESK' ? '/front-desk' :
             role === 'HOUSEKEEPING' ? '/housekeeping' :
-              role === 'FBMANAGER' ? '/orders' :
-                role === 'REVENUEMANAGER' ? '/analytics' : '/book'
+              role === 'FBMANAGER' ? '/orders' : '/book'
       navigate(home)
     } catch (err) {
       setError(err.message || 'Login failed')

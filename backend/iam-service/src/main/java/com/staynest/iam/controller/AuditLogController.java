@@ -23,7 +23,7 @@ public class AuditLogController {
     private final AuditLogService auditLogService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<AuditLog>>> getAll(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(auditLogService.getAll(pageable)));
     }

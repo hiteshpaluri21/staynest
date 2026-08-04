@@ -32,7 +32,7 @@ public class GuestProfileController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'REVENUEMANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
     public ResponseEntity<ApiResponse<List<GuestProfileResponse>>> getAll() {
         return ResponseEntity.ok(ApiResponse.success(guestProfileService.getAllGuests()));
     }
@@ -56,7 +56,7 @@ public class GuestProfileController {
     }
 
     @PatchMapping("/{id}/loyalty")
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<GuestProfileResponse>> updateLoyalty(
             @PathVariable Integer id,
             @RequestParam LoyaltyTier tier) {

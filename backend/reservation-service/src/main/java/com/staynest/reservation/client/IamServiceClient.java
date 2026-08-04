@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "IAM-SERVICE")
+@FeignClient(name = "IAM-SERVICE", fallbackFactory = IamServiceClientFallback.class)
 public interface IamServiceClient {
 
     // Open endpoint (no role restriction) — used to resolve the acting user's real

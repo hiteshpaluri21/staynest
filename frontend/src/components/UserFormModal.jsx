@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Modal, Form, Button, Alert } from 'react-bootstrap'
 import { createUser } from '../services/iam/userService'
 
-const ROLES = ['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'REVENUEMANAGER', 'ADMIN']
+const ROLES = ['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'ADMIN']
 
 export default function UserFormModal({ show, onClose, onSaved }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'GUEST', password: '' })

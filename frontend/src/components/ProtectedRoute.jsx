@@ -7,7 +7,6 @@ const ROLE_ACCESS = {
   FRONTDESK: ['/book', '/my-reservations', '/reservations', '/profile', '/notifications', '/front-desk', '/stays', '/stay-records'],
   HOUSEKEEPING: ['/book', '/my-reservations', '/profile', '/notifications', '/housekeeping', '/maintenance'],
   FBMANAGER: ['/book', '/my-reservations', '/profile', '/notifications', '/menu', '/orders', '/dining-reservations'],
-  REVENUEMANAGER: ['/book', '/my-reservations', '/profile', '/notifications', '/analytics', '/rate-plans'],
 }
 
 function hasAccess(role, path) {

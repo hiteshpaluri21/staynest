@@ -32,7 +32,7 @@ public class StayRecordController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'REVENUEMANAGER', 'GUEST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'GUEST')")
     public ResponseEntity<ApiResponse<List<StayRecordResponse>>> getAll(
             @RequestParam(required = false) Integer guestId,
             @RequestParam(required = false) String status) {
@@ -51,7 +51,7 @@ public class StayRecordController {
     }
 
     @PostMapping("/{id}/folio-items")
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'FBMANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'FBMANAGER', 'GUEST')")
     public ResponseEntity<ApiResponse<StayRecordResponse>> addFolioItem(
             @PathVariable Integer id,
             @Valid @RequestBody FolioItemRequest request) {

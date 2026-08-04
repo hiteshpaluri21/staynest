@@ -45,7 +45,7 @@ export default function RoomListPage() {
         </Form.Select>
         <Form.Select style={{ maxWidth: 200 }} value={filter.roomTypeId} onChange={e => setFilter(f => ({ ...f, roomTypeId: e.target.value }))}>
           <option value="">All Types</option>
-          {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name}</option>)}
+          {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name} — {t.amenitiesList || 'no amenities'}</option>)}
         </Form.Select>
       </div>
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :

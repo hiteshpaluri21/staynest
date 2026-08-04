@@ -20,6 +20,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        # Enables @FeignClient fallbackFactory support (resilience4j).
+        # Tuned in FeignCircuitBreakerConfig (sync execution + 4xx ignored).
+        enabled: true
 
 eureka:
   client:

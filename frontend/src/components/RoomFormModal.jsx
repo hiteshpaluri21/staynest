@@ -31,7 +31,7 @@ export default function RoomFormModal({ show, onClose, onSaved }) {
           <Form.Group className="mb-3"><Form.Label>Room Type</Form.Label>
             <Form.Select required value={form.roomTypeId} onChange={e => set('roomTypeId', e.target.value)}>
               <option value="">— Select —</option>
-              {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name}</option>)}
+              {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name} — {t.amenitiesList || 'no amenities'} (₹{t.baseRate})</option>)}
             </Form.Select>
           </Form.Group>
         </Modal.Body>

@@ -12,7 +12,7 @@ import java.util.Map;
  * Resolves staff recipients (e.g. all HOUSEKEEPING users) so notifications can be
  * addressed to staff, not just the guest/reporter. Returns ACTIVE users of the role.
  */
-@FeignClient(name = "IAM-SERVICE")
+@FeignClient(name = "IAM-SERVICE", fallbackFactory = IamServiceClientFallback.class)
 public interface IamServiceClient {
 
     @GetMapping("/api/users/role/{role}")

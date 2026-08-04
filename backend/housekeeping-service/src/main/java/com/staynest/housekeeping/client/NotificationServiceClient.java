@@ -10,7 +10,7 @@ import java.util.Map;
  * Fire-and-forget client for the notification-service. Body keys: {@code userId} (Integer),
  * {@code message} (String), {@code category} (RESERVATION|FRONTDESK|HOUSEKEEPING|FB|REVENUE).
  */
-@FeignClient(name = "NOTIFICATION-SERVICE")
+@FeignClient(name = "NOTIFICATION-SERVICE", fallbackFactory = NotificationServiceClientFallback.class)
 public interface NotificationServiceClient {
 
     @PostMapping("/api/notifications")

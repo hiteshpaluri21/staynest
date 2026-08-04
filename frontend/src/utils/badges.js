@@ -1,7 +1,7 @@
 export const roleBadge = (role) => {
   const map = {
     ADMIN: 'primary', FRONTDESK: 'info', HOUSEKEEPING: 'success',
-    FBMANAGER: 'warning', REVENUEMANAGER: 'danger', GUEST: 'secondary',
+    FBMANAGER: 'warning', GUEST: 'secondary',
   }
   return map[role] || 'secondary'
 }

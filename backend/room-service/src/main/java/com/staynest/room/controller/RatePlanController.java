@@ -23,7 +23,7 @@ public class RatePlanController {
     private final RatePlanService ratePlanService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RatePlanResponse>> create(@Valid @RequestBody RatePlanRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("RatePlan created", ratePlanService.createRatePlan(request)));
@@ -45,7 +45,7 @@ public class RatePlanController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'REVENUEMANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RatePlanResponse>> updateStatus(
             @PathVariable Integer id,
             @RequestParam RatePlanStatus status) {

@@ -39,11 +39,6 @@ spring:
               predicates:
                 - Path=/api/menu-items/**,/api/menu-items,/api/fb-orders/**,/api/fb-orders,/api/dining-reservations/**,/api/dining-reservations
             
-            - id: revenue-service
-              uri: lb://REVENUE-SERVICE
-              predicates:
-                - Path=/api/reports/**,/api/reports
-            
             - id: notification-service
               uri: lb://NOTIFICATION-SERVICE
               predicates:

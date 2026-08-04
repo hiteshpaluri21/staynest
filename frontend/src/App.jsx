@@ -7,7 +7,6 @@ import UserListPage from './pages/iam/UserListPage'
 import RoomTypePage from './pages/ric/RoomTypePage'
 import RoomListPage from './pages/ric/RoomListPage'
 import RatePlanPage from './pages/ric/RatePlanPage'
-import AnalyticsDashboardPage from './pages/ric/AnalyticsDashboardPage'
 import BookingSearchPage from './pages/rbm/BookingSearchPage'
 import MyReservationsPage from './pages/rbm/MyReservationsPage'
 import MyStayPage from './pages/rbm/MyStayPage'
@@ -39,8 +38,7 @@ export default function App() {
       <Route path="/users" element={withLayout(['ADMIN'], <UserListPage />)} />
       <Route path="/room-types" element={withLayout(['ADMIN'], <RoomTypePage />)} />
       <Route path="/rooms" element={withLayout(['ADMIN'], <RoomListPage />)} />
-      <Route path="/rate-plans" element={withLayout(['ADMIN', 'REVENUEMANAGER', 'GUEST'], <RatePlanPage />)} />
-      <Route path="/analytics" element={withLayout(['ADMIN', 'REVENUEMANAGER'], <AnalyticsDashboardPage />)} />
+      <Route path="/rate-plans" element={withLayout(['ADMIN', 'GUEST'], <RatePlanPage />)} />
 
       <Route path="/book" element={withLayout(['GUEST', 'ADMIN'], <BookingSearchPage />)} />
       <Route path="/my-reservations" element={withLayout(['GUEST', 'ADMIN'], <MyReservationsPage />)} />
@@ -59,7 +57,7 @@ export default function App() {
       <Route path="/orders" element={withLayout(['FBMANAGER', 'ADMIN'], <FBOrderPage />)} />
       <Route path="/dining-reservations" element={withLayout(['FBMANAGER', 'ADMIN'], <DiningReservationPage />)} />
 
-      <Route path="/notifications" element={withLayout(['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'REVENUEMANAGER', 'ADMIN'], <NotificationsPage />)} />
+      <Route path="/notifications" element={withLayout(['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'ADMIN'], <NotificationsPage />)} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

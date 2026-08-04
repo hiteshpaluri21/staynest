@@ -34,6 +34,10 @@ public class RoomServiceImpl implements RoomService {
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new BadRequestException("Invalid RoomTypeId: " + request.getRoomTypeId()));
 
+        if (roomRepository.existsByRoomNumber(request.getRoomNumber())) {
+            throw new BadRequestException("A room with number " + request.getRoomNumber() + " already exists");
+        }
+
         Room room = new Room();
         room.setRoomNumber(request.getRoomNumber());
         room.setFloor(request.getFloor());

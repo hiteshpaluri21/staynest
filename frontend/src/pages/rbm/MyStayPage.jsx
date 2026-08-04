@@ -7,6 +7,7 @@ import { getOrders, placeOrder } from '../../services/fbm/orderService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
+import AddChargeModal from '../../components/AddChargeModal'
 import { statusBadge } from '../../utils/badges'
 
 const MENU_CATEGORIES = ['BREAKFAST', 'MAINCOURSE', 'BEVERAGE', 'DESSERT']
@@ -25,6 +26,7 @@ export default function MyStayPage() {
   const [orderType, setOrderType] = useState('INROOMDINING')
   const [submitErr, setSubmitErr] = useState('')
   const [submitOk, setSubmitOk] = useState('')
+  const [showAddCharge, setShowAddCharge] = useState(false)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -109,7 +111,10 @@ export default function MyStayPage() {
           </Card>
 
           <Card className="shadow-sm">
-            <Card.Header className="bg-white"><strong>My Bill (Folio)</strong></Card.Header>
+            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+              <strong>My Bill (Folio)</strong>
+              <Button size="sm" variant="outline-primary" disabled={stay.status !== 'ACTIVE'} onClick={() => setShowAddCharge(true)}>+ Add Charge</Button>
+            </Card.Header>
             <Card.Body>
               {folio.length === 0 ? <p className="text-muted mb-0">No charges yet.</p> :
                 <Table size="sm" className="mb-0">
@@ -197,6 +202,13 @@ export default function MyStayPage() {
           </Card>
         </Col>
       </Row>
+
+      <AddChargeModal
+        show={showAddCharge}
+        stayId={stay.stayId}
+        onClose={() => setShowAddCharge(false)}
+        onSaved={() => { setShowAddCharge(false); load() }}
+      />
     </div>
   )
 }

@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "ROOM-SERVICE")
+@FeignClient(name = "ROOM-SERVICE", fallbackFactory = RoomServiceClientFallback.class)
 public interface RoomServiceClient {
 
     @PatchMapping("/api/rooms/{id}/status")

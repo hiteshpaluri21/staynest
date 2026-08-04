@@ -55,7 +55,17 @@ export default function BookingSearchPage() {
   }
 
   const typeMap = Object.fromEntries(types.map(t => [t.roomTypeId, t]))
-  const plansByType = (id) => plans.filter(p => p.roomTypeId === id)
+  // Only rate plans that are ACTIVE and valid for the whole selected stay
+  // (validFrom on/before check-in, validTo on/after the last night) should appear.
+  const plansByType = (id) => {
+    const lastNight = addDays(form.checkOut, -1)
+    return plans.filter(p =>
+      p.roomTypeId === id &&
+      (!p.status || p.status === 'ACTIVE') &&
+      (!p.validFrom || p.validFrom <= form.checkIn) &&
+      (!p.validTo || p.validTo >= lastNight)
+    )
+  }
 
   return (
     <div>

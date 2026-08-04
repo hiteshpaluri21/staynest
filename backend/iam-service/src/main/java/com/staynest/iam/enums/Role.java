@@ -5,6 +5,5 @@ public enum Role {
     FRONTDESK,
     HOUSEKEEPING,
     FBMANAGER,
-    REVENUEMANAGER,
     ADMIN
 }

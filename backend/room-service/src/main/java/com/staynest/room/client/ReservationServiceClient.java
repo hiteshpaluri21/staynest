@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "RESERVATION-SERVICE")
+@FeignClient(name = "RESERVATION-SERVICE", fallbackFactory = ReservationServiceClientFallback.class)
 public interface ReservationServiceClient {
 
 	@GetMapping("/api/reservations")

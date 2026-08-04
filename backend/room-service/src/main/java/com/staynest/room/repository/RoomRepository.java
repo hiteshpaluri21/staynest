@@ -12,4 +12,5 @@ public interface RoomRepository extends JpaRepository<Room, Integer> {
     List<Room> findByStatus(RoomStatus status);
     List<Room> findByRoomType_RoomTypeId(Integer roomTypeId);
     List<Room> findByFloor(Integer floor);
+    boolean existsByRoomNumber(String roomNumber);
 }
