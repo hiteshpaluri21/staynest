@@ -11,5 +11,6 @@ public interface RoomTypeService {
     RoomTypeResponse createRoomType(RoomTypeRequest request);
     List<RoomTypeResponse> getAllRoomTypes();
     RoomTypeResponse getRoomTypeById(Integer id);
+    RoomTypeResponse updateRoomType(Integer id, RoomTypeRequest request);
     RoomTypeResponse updateStatus(Integer id, RatePlanStatus status);
 }

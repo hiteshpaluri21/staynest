@@ -30,7 +30,7 @@ export default function BookingSearchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
-  const [selectedRoom, setSelectedRoom] = useState(null)
+  const [selectedType, setSelectedType] = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleCheckInChange = (e) => {
@@ -55,6 +55,18 @@ export default function BookingSearchPage() {
   }
 
   const typeMap = Object.fromEntries(types.map(t => [t.roomTypeId, t]))
+
+  // Guests book a room type, not a specific room — the actual room is assigned at check-in.
+  // The availability endpoint returns individual rooms, so collapse them into one entry per
+  // room type carrying how many of that type are still free for the selected dates.
+  const availableTypes = Object.values(
+    rooms.reduce((acc, r) => {
+      if (!acc[r.roomTypeId]) acc[r.roomTypeId] = { roomTypeId: r.roomTypeId, type: typeMap[r.roomTypeId], count: 0 }
+      acc[r.roomTypeId].count += 1
+      return acc
+    }, {})
+  ).filter(g => g.type && g.count > 0)
+
   // Only rate plans that are ACTIVE and valid for the whole selected stay
   // (validFrom on/before check-in, validTo on/after the last night) should appear.
   const plansByType = (id) => {
@@ -85,39 +97,33 @@ export default function BookingSearchPage() {
       </Card>
 
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
-        searched && rooms.length === 0 ? <EmptyState message="No rooms available for selected dates" /> :
+        searched && availableTypes.length === 0 ? <EmptyState message="No room types available for selected dates" /> :
         <Row>
-          {rooms.map(r => {
-            const t = typeMap[r.roomTypeId]
-            return (
-              <Col md={6} lg={4} key={r.roomId} className="mb-3">
-                <Card className="h-100 shadow-sm">
-                  <Card.Body>
-                    <div className="d-flex justify-content-between">
-                      <h5><Badge bg="primary">{t?.name || 'Room'}</Badge></h5>
-                      <Badge className={`badge-room-${r.status}`}>{r.status}</Badge>
-                    </div>
-                    <p className="text-muted small">Room #{r.roomNumber} · Floor {r.floor}</p>
-                    {t && <>
-                      <div><strong>Base Rate:</strong> ₹{t.baseRate}/night</div>
-                      <div><strong>Max Occupancy:</strong> {t.maxOccupancy}</div>
-                      <div className="small text-muted mb-3">{t.bedConfiguration}</div>
-                    </>}
-                    <Button size="sm" style={{ background: '#f59e0b', borderColor: '#f59e0b' }} onClick={() => setSelectedRoom({ room: r, type: t })}>
-                      Book Now
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-            )
-          })}
+          {availableTypes.map(({ roomTypeId, type: t, count }) => (
+            <Col md={6} lg={4} key={roomTypeId} className="mb-3">
+              <Card className="h-100 shadow-sm">
+                <Card.Body>
+                  <div className="d-flex justify-content-between">
+                    <h5><Badge bg="primary">{t.name}</Badge></h5>
+                    <Badge bg={count > 3 ? 'success' : 'warning'}>{count} available</Badge>
+                  </div>
+                  <div><strong>Base Rate:</strong> ₹{t.baseRate}/night</div>
+                  <div><strong>Max Occupancy:</strong> {t.maxOccupancy}</div>
+                  <div className="small text-muted mb-3">{t.bedConfiguration}</div>
+                  <Button size="sm" style={{ background: '#f59e0b', borderColor: '#f59e0b' }} onClick={() => setSelectedType({ type: t, availableCount: count })}>
+                    Book Now
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
         </Row>
       }
 
-      {selectedRoom && (
+      {selectedType && (
         <BookingConfirmModal
-          data={{ ...form, ...selectedRoom, ratePlans: plansByType(selectedRoom.type?.roomTypeId) }}
-          onClose={() => setSelectedRoom(null)}
+          data={{ ...form, ...selectedType, ratePlans: plansByType(selectedType.type?.roomTypeId) }}
+          onClose={() => setSelectedType(null)}
         />
       )}
     </div>

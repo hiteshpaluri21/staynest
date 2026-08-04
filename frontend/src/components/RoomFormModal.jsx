@@ -15,9 +15,21 @@ export default function RoomFormModal({ show, onClose, onSaved }) {
   }, [show])
 
   const submit = async (e) => {
-    e.preventDefault(); setSaving(true); setError('')
-    try { await createRoom({ ...form, floor: Number(form.floor), roomTypeId: Number(form.roomTypeId) }); onSaved() }
-    catch (err) { setError(err.message) } finally { setSaving(false) }
+    e.preventDefault(); 
+    setSaving(true); 
+    setError('')
+    try { 
+      await createRoom({ 
+        ...form, 
+        floor: Number(form.floor), 
+        roomTypeId: Number(form.roomTypeId) 
+      }) 
+      onSaved() 
+    } catch (err) { 
+      setError(err.message) 
+    } finally { 
+      setSaving(false) 
+    }
   }
 
   return (
@@ -31,13 +43,19 @@ export default function RoomFormModal({ show, onClose, onSaved }) {
           <Form.Group className="mb-3"><Form.Label>Room Type</Form.Label>
             <Form.Select required value={form.roomTypeId} onChange={e => set('roomTypeId', e.target.value)}>
               <option value="">— Select —</option>
-              {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name} — {t.amenitiesList || 'no amenities'} (₹{t.baseRate})</option>)}
+              {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>
+                                {t.name} — {t.amenitiesList || 'no amenities'} (₹{t.baseRate})
+                              </option>)}
             </Form.Select>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Saving…' : 'Create'}</Button>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>
+            {saving ? 'Saving…' : 'Create'}
+          </Button>
         </Modal.Footer>
       </Form>
     </Modal>

@@ -21,7 +21,8 @@ export default function RoomListPage() {
     try {
       // Backend honors only one filter param at a time, so fetch by status and filter type client-side.
       const [rs, ts] = await Promise.all([getRooms(filter.status ? { status: filter.status } : {}), getRoomTypes()])
-      setRooms(rs); setTypes(ts)
+      setRooms(rs)
+      setTypes(ts)
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [filter.status])
@@ -51,11 +52,20 @@ export default function RoomListPage() {
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         shownRooms.length === 0 ? <EmptyState /> :
           <Table hover responsive>
-            <thead><tr><th>ID</th><th>Room No</th><th>Floor</th><th>Type</th><th>Status</th><th>Change Status</th></tr></thead>
+            <thead>
+              <tr>
+                {/* <th>ID</th> */}
+                <th>Room No</th>
+                <th>Floor</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Change Status</th>
+              </tr>
+            </thead>
             <tbody>
               {shownRooms.map(r => (
                 <tr key={r.roomId}>
-                  <td>{r.roomId}</td>
+                  {/* <td>{r.roomId}</td> */}
                   <td><strong>{r.roomNumber}</strong></td>
                   <td>{r.floor}</td>
                   <td>{r.roomTypeName}</td>
@@ -70,7 +80,11 @@ export default function RoomListPage() {
             </tbody>
           </Table>
       }
-      <RoomFormModal show={showModal} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }} />
+      <RoomFormModal 
+        show={showModal} 
+        onClose={() => setShowModal(false)} 
+        onSaved={() => { setShowModal(false) 
+        load() }} />
     </div>
   )
 }

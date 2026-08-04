@@ -38,6 +38,14 @@ public class RoomTypeController {
         return ResponseEntity.ok(ApiResponse.success(roomTypeService.getRoomTypeById(id)));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RoomTypeResponse>> update(
+            @PathVariable Integer id,
+            @Valid @RequestBody RoomTypeRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("RoomType updated", roomTypeService.updateRoomType(id, request)));
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RoomTypeResponse>> updateStatus(

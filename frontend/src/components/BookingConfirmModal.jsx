@@ -46,8 +46,9 @@ export default function BookingConfirmModal({ data, onClose }) {
         <Form onSubmit={submit}>
           <Modal.Body>
             {error && <Alert variant="danger" className="py-2">{error}</Alert>}
-            <p><Badge bg="primary">{data.type?.name}</Badge> Room #{data.room?.roomNumber} · Floor {data.room?.floor}</p>
+            <p><Badge bg="primary">{data.type?.name}</Badge> {data.type?.bedConfiguration}</p>
             <p className="small text-muted">Check-in: {data.checkIn} · Check-out: {data.checkOut} · {nights} night(s)</p>
+            <p className="small text-muted">Your room number is assigned when you check in.</p>
             <Form.Group className="mb-3">
               <Form.Label>Rate Plan</Form.Label>
               <Form.Select value={ratePlanId} onChange={e => setRatePlanId(e.target.value)}>

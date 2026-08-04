@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, Row, Col, Button, Badge } from 'react-bootstrap'
 import { FaPlus, FaEdit } from 'react-icons/fa'
-import { getRoomTypes, updateRoomTypeStatus } from '../../services/ric/roomTypeService'
+import { getRoomTypes } from '../../services/ric/roomTypeService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import RoomTypeFormModal from '../../components/RoomTypeFormModal'
@@ -12,6 +12,7 @@ export default function RoomTypePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -19,16 +20,15 @@ export default function RoomTypePage() {
   }
   useEffect(() => { load() }, [])
 
-  const toggle = async (rt) => {
-    const next = rt.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
-    try { await updateRoomTypeStatus(rt.roomTypeId, next); load() } catch (e) { alert(e.message) }
-  }
+  const openCreate = () => { setEditing(null); setShowModal(true) }
+  const openEdit = (rt) => { setEditing(rt); setShowModal(true) }
+  const closeModal = () => { setShowModal(false); setEditing(null) }
 
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Room Types</h4>
-        <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => setShowModal(true)}>
+        <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={openCreate}>
           <FaPlus className="me-2" /> Add Room Type
         </Button>
       </div>
@@ -47,8 +47,8 @@ export default function RoomTypePage() {
                   <div className="mb-1"><strong>Max Occupancy:</strong> {rt.maxOccupancy}</div>
                   <div className="mb-1"><strong>Base Rate:</strong> ₹{rt.baseRate}</div>
                   <div className="mb-3"><strong>Amenities:</strong> {rt.amenitiesList || '—'}</div>
-                  <Button size="sm" variant="outline-secondary" onClick={() => toggle(rt)}>
-                    <FaEdit className="me-1" /> {rt.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                  <Button size="sm" variant="outline-secondary" onClick={() => openEdit(rt)}>
+                    <FaEdit className="me-1" /> Edit
                   </Button>
                 </Card.Body>
               </Card>
@@ -56,7 +56,7 @@ export default function RoomTypePage() {
           ))}
         </Row>
       }
-      <RoomTypeFormModal show={showModal} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }} />
+      <RoomTypeFormModal show={showModal} roomType={editing} onClose={closeModal} onSaved={() => { closeModal(); load() }} />
     </div>
   )
 }

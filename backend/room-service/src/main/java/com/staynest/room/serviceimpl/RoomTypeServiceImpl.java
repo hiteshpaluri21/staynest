@@ -28,13 +28,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
 	@Override
 	public RoomTypeResponse createRoomType(RoomTypeRequest request) {
-		String normalizedAmenities = normalizeAmenities(request.getAmenitiesList());
-		boolean duplicate = roomTypeRepository.findByName(request.getName()).stream()
-				.anyMatch(rt -> normalizeAmenities(rt.getAmenitiesList()).equals(normalizedAmenities));
-		if (duplicate) {
-			throw new BadRequestException(
-					"A room type '" + request.getName() + "' with the same amenities already exists");
-		}
+		checkDuplicate(request, null);
 
 		RoomType roomType = new RoomType();
 		roomType.setName(request.getName());
@@ -62,6 +56,23 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 	}
 
 	@Override
+	public RoomTypeResponse updateRoomType(Integer id, RoomTypeRequest request) {
+		RoomType roomType = roomTypeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("RoomType not found: " + id));
+		checkDuplicate(request, id);
+
+		roomType.setName(request.getName());
+		roomType.setBedConfiguration(request.getBedConfiguration());
+		roomType.setMaxOccupancy(request.getMaxOccupancy());
+		roomType.setBaseRate(request.getBaseRate());
+		roomType.setAmenitiesList(request.getAmenitiesList());
+
+		RoomType updated = roomTypeRepository.save(roomType);
+		log.info("RoomType updated: {}", id);
+		return mapToResponse(updated);
+	}
+
+	@Override
 	public RoomTypeResponse updateStatus(Integer id, RatePlanStatus status) {
 		RoomType roomType = roomTypeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("RoomType not found: " + id));
@@ -69,6 +80,21 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 		RoomType updated = roomTypeRepository.save(roomType);
 		log.info("RoomType {} status updated to {}", id, status);
 		return mapToResponse(updated);
+	}
+
+	/**
+	 * Rejects a room type whose name and amenities duplicate an existing one. When updating,
+	 * {@code excludeId} is the row being edited so it does not count as its own duplicate.
+	 */
+	private void checkDuplicate(RoomTypeRequest request, Integer excludeId) {
+		String normalizedAmenities = normalizeAmenities(request.getAmenitiesList());
+		boolean duplicate = roomTypeRepository.findByName(request.getName()).stream()
+				.filter(rt -> excludeId == null || !excludeId.equals(rt.getRoomTypeId()))
+				.anyMatch(rt -> normalizeAmenities(rt.getAmenitiesList()).equals(normalizedAmenities));
+		if (duplicate) {
+			throw new BadRequestException(
+					"A room type '" + request.getName() + "' with the same amenities already exists");
+		}
 	}
 
 	/**

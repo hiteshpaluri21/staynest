@@ -1,34 +1,53 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal, Form, Button, Alert } from 'react-bootstrap'
-import { createRoomType } from '../services/ric/roomTypeService'
+import { createRoomType, updateRoomType } from '../services/ric/roomTypeService'
 
 const NAMES = ['STANDARD', 'DELUXE', 'SUITE', 'VILLA']
 
-export default function RoomTypeFormModal({ show, onClose, onSaved }) {
-  const [form, setForm] = useState({ name: 'STANDARD', bedConfiguration: '1 King Bed', maxOccupancy: 2, baseRate: 2000, amenitiesList: 'WiFi, AC' })
+const BLANK = { name: 'STANDARD', bedConfiguration: '1 King Bed', maxOccupancy: 2, baseRate: 2000, amenitiesList: 'WiFi, AC' }
+
+export default function RoomTypeFormModal({ show, onClose, onSaved, roomType }) {
+  const isEdit = Boolean(roomType)
+  const [form, setForm] = useState(BLANK)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const submit = async (e) => {
-    e.preventDefault(); 
-    setSaving(true); 
+  // Reload the fields whenever the modal is (re)opened so an edit shows the selected
+  // room type and a create always starts from a clean form.
+  useEffect(() => {
+    if (!show) return
     setError('')
-    
-    try { 
-      await createRoomType({ ...form, maxOccupancy: Number(form.maxOccupancy), baseRate: Number(form.baseRate) }); 
-      onSaved() 
+    setForm(roomType ? {
+      name: roomType.name,
+      bedConfiguration: roomType.bedConfiguration || '',
+      maxOccupancy: roomType.maxOccupancy,
+      baseRate: roomType.baseRate,
+      amenitiesList: roomType.amenitiesList || '',
+    } : BLANK)
+  }, [show, roomType])
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('')
+
+    try {
+      const payload = { ...form, maxOccupancy: Number(form.maxOccupancy), baseRate: Number(form.baseRate) }
+      if (isEdit) await updateRoomType(roomType.roomTypeId, payload)
+      else await createRoomType(payload)
+      onSaved()
     }
-    catch (err) { 
-      setError(err.message) 
-    } finally { 
-      setSaving(false) 
+    catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
     <Modal show={show} onHide={onClose}>
-      <Modal.Header closeButton><Modal.Title>Add Room Type</Modal.Title></Modal.Header>
+      <Modal.Header closeButton><Modal.Title>{isEdit ? 'Edit Room Type' : 'Add Room Type'}</Modal.Title></Modal.Header>
       
       <Form onSubmit={submit}>
 
@@ -43,7 +62,7 @@ export default function RoomTypeFormModal({ show, onClose, onSaved }) {
 
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Saving…' : 'Create'}</Button>
+          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create'}</Button>
         </Modal.Footer>
 
       </Form>

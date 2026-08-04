@@ -35,7 +35,9 @@ export default function RatePlanFormModal({ show, onClose, onSaved }) {
           <Form.Group className="mb-3"><Form.Label>Room Type</Form.Label>
             <Form.Select required value={form.roomTypeId} onChange={e => set('roomTypeId', e.target.value)}>
               <option value="">— Select —</option>
-              {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name}</option>)}
+              {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>
+                                {t.name} — {t.amenitiesList || 'no amenities'} (₹{t.baseRate})
+                              </option>)}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3"><Form.Label>Plan Name</Form.Label><Form.Select value={form.name} onChange={e => set('name', e.target.value)}>{NAMES.map(n => <option key={n}>{n}</option>)}</Form.Select></Form.Group>
