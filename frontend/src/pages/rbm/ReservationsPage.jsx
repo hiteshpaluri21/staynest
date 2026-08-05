@@ -90,7 +90,7 @@ export default function ReservationsPage() {
           <tbody>
             {filtered.map(r => (
               <tr key={r.reservationId}>
-                <td><strong>#{r.reservationId}</strong></td>
+                <td><strong>{r.reservationId}</strong></td>
                 <td>{r.guestName || <span className="text-muted small">Guest #{r.guestId}</span>}</td>
                 <td>{r.checkInDate}</td>
                 <td>{r.checkOutDate}</td>

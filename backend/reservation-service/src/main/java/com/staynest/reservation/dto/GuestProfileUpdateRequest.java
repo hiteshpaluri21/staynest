@@ -1,6 +1,8 @@
 package com.staynest.reservation.dto;
 
+import com.staynest.reservation.validation.ValidationPatterns;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 /**
@@ -11,6 +13,8 @@ import lombok.Data;
 public class GuestProfileUpdateRequest {
     @NotBlank
     private String name;
+    @NotBlank
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String phone;
     private String nationality;
     private String idDocumentType;

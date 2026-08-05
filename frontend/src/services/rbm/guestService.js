@@ -1,3 +1,5 @@
+import { authError } from '../../utils/session'
+
 const BASE_URL = '/api/guests'
 
 const toQuery = (params) => {
@@ -16,11 +18,8 @@ const request = async (url, options = {}) => {
 
   const res = await fetch(url, { ...options, headers })
 
-  if (res.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('staynest_auth')
-    if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
-    throw new Error('Unauthorized')
+  if (res.status === 401 || res.status === 403) {
+    throw authError(res.status)
   }
 
   const ct = res.headers.get('content-type') || ''
@@ -37,6 +36,10 @@ const request = async (url, options = {}) => {
 export const getGuests = () => request(BASE_URL)
 
 export const getGuestById = (id) => request(`${BASE_URL}/${id}`)
+
+// The signed-in user's own guest profile, resolved from the JWT. Use the guestId from here —
+// it is NOT the same as the IAM userId, and passing userId as guestId silently returns nothing.
+export const getMyGuestProfile = () => request(`${BASE_URL}/me`)
 
 export const getGuestByEmail = (email) => request(`${BASE_URL}/email/${email}`)
 

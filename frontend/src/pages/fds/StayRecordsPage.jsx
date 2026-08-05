@@ -103,8 +103,8 @@ export default function StayRecordsPage() {
           <tbody>
             {filtered.map(s => (
               <tr key={s.stayId}>
-                <td><strong>#{s.stayId}</strong></td>
-                <td>#{s.reservationId}</td>
+                <td><strong>{s.stayId}</strong></td>
+                <td>{s.reservationId}</td>
                 <td>{guestLabel(s.guestId)}</td>
                 <td><Badge bg="secondary">{roomLabel(s.assignedRoomId)}</Badge></td>
                 <td>{fmt(s.actualCheckIn)}</td>

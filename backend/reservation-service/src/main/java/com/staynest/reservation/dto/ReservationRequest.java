@@ -3,6 +3,7 @@ package com.staynest.reservation.dto;
 import com.staynest.reservation.enums.BookingChannel;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ public class ReservationRequest {
     private Integer nights;
     @NotNull @Positive
     private Integer adults;
+    @PositiveOrZero
     private Integer children;
     @NotNull @Positive
     private BigDecimal totalAmount;

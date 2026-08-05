@@ -1,3 +1,5 @@
+import { authError } from '../../utils/session'
+
 const BASE_URL = '/api/notifications'
 
 const request = async (url, options = {}) => {
@@ -7,11 +9,8 @@ const request = async (url, options = {}) => {
 
   const res = await fetch(url, { ...options, headers })
 
-  if (res.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('staynest_auth')
-    if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
-    throw new Error('Unauthorized')
+  if (res.status === 401 || res.status === 403) {
+    throw authError(res.status)
   }
 
   const ct = res.headers.get('content-type') || ''

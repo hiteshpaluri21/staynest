@@ -12,7 +12,7 @@ const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 const STATUSES = ['OPEN', 'INPROGRESS', 'RESOLVED', 'DEFERRED']
 
 export default function MaintenancePage() {
-  const { user } = useAuth()
+  const { user, guestId } = useAuth()
   const isGuest = user?.role === 'GUEST'
   const [items, setItems] = useState([])
   const [rooms, setRooms] = useState([])
@@ -32,9 +32,11 @@ export default function MaintenancePage() {
       setRooms(roomList || [])
       if (isGuest) {
         // A guest sees only their own requests, and can raise a new one for their active stay's room.
+        // reportedBy is an IAM userId, but stays are keyed by the reservation-service guestId —
+        // two different ids, and mixing them up hid the guest's active stay.
         const [mine, stays] = await Promise.all([
           getRequests({ reportedBy: user?.userId }).catch(() => []),
-          getStays({ guestId: user?.userId }).catch(() => []),
+          getStays({ guestId }).catch(() => []),
         ])
         const active = (stays || []).find(s => s.status === 'ACTIVE')
         setActiveRoomId(active?.assignedRoomId ?? null)
@@ -44,7 +46,8 @@ export default function MaintenancePage() {
       }
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
-  useEffect(() => { load() }, [user])
+  // For guests, hold off until guestId resolves so the stay lookup isn't run with undefined.
+  useEffect(() => { if (!isGuest || guestId) load() }, [user, guestId, isGuest])
 
   const roomNumberMap = useMemo(
     () => Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber])),

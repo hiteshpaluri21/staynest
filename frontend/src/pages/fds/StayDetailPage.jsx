@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Table, Button, Badge, Row, Col } from 'react-bootstrap'
 import { getStayById, getFolioItems, checkOut } from '../../services/fds/stayService'
+import { getRooms } from '../../services/ric/roomService'
 import Loader from '../../components/Loader'
 import AddChargeModal from '../../components/AddChargeModal'
 import { statusBadge } from '../../utils/badges'
@@ -15,14 +16,21 @@ export default function StayDetailPage() {
   const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editItem, setEditItem] = useState(null)
+  // The stay only stores assignedRoomId, so resolve it to the guest-facing room number.
+  const [roomNumbers, setRoomNumbers] = useState({})
 
   const load = async () => {
     setLoading(true); setError('')
     try {
       // Load the stay and its folio independently: a folio-items failure should not
       // blank out the stay details, and vice-versa.
-      const [s, it] = await Promise.all([getStayById(stayId), getFolioItems(stayId).catch(() => [])])
+      const [s, it, rooms] = await Promise.all([
+        getStayById(stayId),
+        getFolioItems(stayId).catch(() => []),
+        getRooms().catch(() => []),
+      ])
       setStay(s); setItems(it || [])
+      setRoomNumbers(Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber])))
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [stayId])
@@ -50,9 +58,9 @@ export default function StayDetailPage() {
         <Col md={4}>
           <Card className="shadow-sm mb-3">
             <Card.Body>
-              <div className="mb-2"><strong>Reservation:</strong> #{stay.reservationId}</div>
+              <div className="mb-2"><strong>Reservation:</strong> {stay.reservationId}</div>
               <div className="mb-2"><strong>Guest ID:</strong> {stay.guestId}</div>
-              <div className="mb-2"><strong>Room:</strong> {stay.assignedRoomId}</div>
+              <div className="mb-2"><strong>Room:</strong> {roomNumbers[stay.assignedRoomId] ?? (stay.assignedRoomId != null ? `id ${stay.assignedRoomId}` : '—')}</div>
               <div className="mb-2"><strong>Check-In:</strong> {stay.actualCheckIn}</div>
               {stay.actualCheckOut && <div className="mb-2"><strong>Check-Out:</strong> {stay.actualCheckOut}</div>}
               <hr />

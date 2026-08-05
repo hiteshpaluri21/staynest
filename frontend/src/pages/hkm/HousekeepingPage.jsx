@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Row, Col, Card, Button, Badge, Modal, Form, Alert } from 'react-bootstrap'
-import { getTasks, updateTaskStatus, createTask } from '../../services/hkm/taskService'
+import { getTasks, updateTaskStatus, createTask, assignTask } from '../../services/hkm/taskService'
 import { getRooms } from '../../services/ric/roomService'
+import { getUsersByRole } from '../../services/iam/userService'
+import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 
@@ -14,8 +16,14 @@ const COLUMNS = [
 const TASK_TYPES = ['CHECKOUT', 'STAYOVERSERVICE', 'TURNDOWN', 'DEEPCLEAN']
 
 export default function HousekeepingPage() {
+  const { user } = useAuth()
+  // Front desk raises, assigns and cancels work but never works it. Housekeeping monitors the
+  // board and is the only role that starts a task or marks it done.
+  const canManageTasks = user?.role === 'FRONTDESK' || user?.role === 'ADMIN'
+  const canProcessTasks = user?.role === 'HOUSEKEEPING' || user?.role === 'ADMIN'
   const [tasks, setTasks] = useState([])
   const [rooms, setRooms] = useState([])
+  const [staff, setStaff] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [show, setShow] = useState(false)
@@ -25,14 +33,24 @@ export default function HousekeepingPage() {
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const [ts, rs] = await Promise.all([getTasks(), getRooms().catch(() => [])])
-      setTasks(ts); setRooms(rs || [])
+      const [ts, rs, st] = await Promise.all([
+        getTasks(),
+        getRooms().catch(() => []),
+        // Needed to name assignees and to populate the front desk's assign dropdown.
+        getUsersByRole('HOUSEKEEPING').catch(() => []),
+      ])
+      setTasks(ts); setRooms(rs || []); setStaff(st || [])
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
 
   const move = async (task, status) => {
     try { await updateTaskStatus(task.taskId, status); load() }
+    catch (e) { alert(e.message) }
+  }
+
+  const assign = async (task, staffId) => {
+    try { await assignTask(task.taskId, Number(staffId)); load() }
     catch (e) { alert(e.message) }
   }
 
@@ -49,11 +67,18 @@ export default function HousekeepingPage() {
 
   const grouped = (status) => tasks.filter(t => t.status === status)
 
+  // Tasks reference roomId (a PK); staff think in room numbers.
+  const roomNumbers = Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber]))
+  const roomLabel = (roomId) => roomNumbers[roomId] != null ? `Room ${roomNumbers[roomId]}` : `Room id ${roomId}`
+
+  const staffNames = Object.fromEntries((staff || []).map(s => [s.userId, s.name]))
+  const staffLabel = (staffId) => staffNames[staffId] || `Staff ${staffId}`
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h4 className="mb-0">Housekeeping Task Board</h4>
-        <Button variant="outline-success" size="sm" onClick={openCreate}>+ Quick Task</Button>
+        {canManageTasks && <Button variant="outline-success" size="sm" onClick={openCreate}>+ Quick Task</Button>}
       </div>
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         <Row>
@@ -65,15 +90,36 @@ export default function HousekeepingPage() {
                   grouped(col.key).map(t => (
                     <div key={t.taskId} className="task-card">
                       <div className="d-flex justify-content-between">
-                        <strong>Task #{t.taskId}</strong>
+                        <strong>Task {t.taskId}</strong>
                         <Badge bg="secondary">{t.taskType}</Badge>
                       </div>
-                      <p className="small mb-1 text-muted">Room #{t.roomId}</p>
-                      {t.assignedToId && <p className="small mb-2">Assigned to: #{t.assignedToId}</p>}
+                      <p className="small mb-1 text-muted">{roomLabel(t.roomId)}</p>
+                      <p className="small mb-2">
+                        Assigned to: {t.assignedToId ? staffLabel(t.assignedToId) : <span className="text-muted">Unassigned</span>}
+                      </p>
+
+                      {/* Front desk picks who does the job; the task stays PENDING until that
+                          person starts it themselves. */}
+                      {canManageTasks && col.key !== 'DONE' && (
+                        <Form.Select
+                          size="sm"
+                          className="mb-2"
+                          value={t.assignedToId ?? ''}
+                          onChange={e => e.target.value && assign(t, e.target.value)}
+                        >
+                          <option value="">
+                            {staff.length === 0 ? 'No housekeeping staff found' : '— Assign to… —'}
+                          </option>
+                          {staff.map(s => (
+                            <option key={s.userId} value={s.userId}>{s.name}</option>
+                          ))}
+                        </Form.Select>
+                      )}
+
                       <div className="d-flex gap-1">
-                        {col.key === 'PENDING' && <Button size="sm" variant="warning" onClick={() => move(t, 'INPROGRESS')}>Start</Button>}
-                        {col.key === 'INPROGRESS' && <Button size="sm" variant="success" onClick={() => move(t, 'DONE')}>Mark Done</Button>}
-                        {col.key !== 'DONE' && <Button size="sm" variant="outline-secondary" onClick={() => move(t, 'SKIPPED')}>Skip</Button>}
+                        {canProcessTasks && col.key === 'PENDING' && <Button size="sm" variant="warning" onClick={() => move(t, 'INPROGRESS')}>Start</Button>}
+                        {canProcessTasks && col.key === 'INPROGRESS' && <Button size="sm" variant="success" onClick={() => move(t, 'DONE')}>Mark Done</Button>}
+                        {col.key !== 'DONE' && canManageTasks && <Button size="sm" variant="outline-secondary" onClick={() => move(t, 'SKIPPED')}>Skip</Button>}
                       </div>
                     </div>
                   ))
@@ -95,7 +141,7 @@ export default function HousekeepingPage() {
                 <option value="">Select a room…</option>
                 {rooms.map(r => (
                   <option key={r.roomId} value={r.roomId}>
-                    Room #{r.roomNumber ?? r.roomId}{r.status ? ` — ${r.status}` : ''}
+                    Room {r.roomNumber ?? r.roomId}{r.status ? ` — ${r.status}` : ''}
                   </option>
                 ))}
               </Form.Select>

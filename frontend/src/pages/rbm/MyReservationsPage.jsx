@@ -2,31 +2,45 @@ import { useEffect, useState } from 'react'
 import { Table, Button, Badge } from 'react-bootstrap'
 import { getReservations, cancelReservation } from '../../services/rbm/reservationService'
 import { getStays } from '../../services/fds/stayService'
+import { getRooms } from '../../services/ric/roomService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import { statusBadge } from '../../utils/badges'
 
 export default function MyReservationsPage() {
-  const { user } = useAuth()
+  const { user, guestId } = useAuth()
   const [items, setItems] = useState([])
   const [stays, setStays] = useState([])
+  // Stays only carry assignedRoomId (a PK), so resolve it to the room number guests recognise.
+  const [roomNumbers, setRoomNumbers] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const isStaff = user?.role === 'ADMIN' || user?.role === 'FRONTDESK'
 
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const isStaff = user?.role === 'ADMIN' || user?.role === 'FRONTDESK'
-      const [resList, stayList] = await Promise.all([
-        getReservations(isStaff ? {} : { guestId: user?.userId }),
-        getStays(isStaff ? {} : { guestId: user?.userId }).catch(() => [])
+      // Filter on the reservation-service guestId, never user.userId — they are different keys,
+      // and querying by userId returned an empty list even though the booking existed.
+      const [resList, stayList, rooms] = await Promise.all([
+        getReservations(isStaff ? {} : { guestId }),
+        getStays(isStaff ? {} : { guestId }).catch(() => []),
+        getRooms().catch(() => [])
       ])
       setItems(resList)
       setStays(stayList)
+      setRoomNumbers(Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber])))
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
-  useEffect(() => { if (user) load() }, [user])
+
+  // Wait for the guest profile to resolve before querying, otherwise the first load would run
+  // with guestId undefined and fetch every reservation in the system.
+  useEffect(() => {
+    if (!user) return
+    if (isStaff || guestId) load()
+  }, [user, guestId, isStaff])
 
   const stayMap = Object.fromEntries(stays.map(s => [s.reservationId, s]))
 
@@ -60,12 +74,16 @@ export default function MyReservationsPage() {
               const stay = stayMap[r.reservationId]
               return (
                 <tr key={r.reservationId}>
-                  <td><strong>#{r.reservationId}</strong></td>
+                  <td><strong>{r.reservationId}</strong></td>
                   <td>
                     {stay ? (
                       <div>
-                        <Badge bg="dark" className="me-1">Stay #{stay.stayId}</Badge>
-                        <Badge bg="secondary">Room #{stay.assignedRoomId}</Badge>
+                        <Badge bg="dark" className="me-1">Stay {stay.stayId}</Badge>
+                        <Badge bg="secondary">
+                          {roomNumbers[stay.assignedRoomId] != null
+                            ? `Room ${roomNumbers[stay.assignedRoomId]}`
+                            : `Room id ${stay.assignedRoomId}`}
+                        </Badge>
                       </div>
                     ) : (
                       <span className="text-muted small">Not Checked In</span>

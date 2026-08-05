@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Row, Col, Button, Badge, Table } from 'react-bootstrap'
 import { getUpcoming } from '../../services/rbm/reservationService'
 import { getStays } from '../../services/fds/stayService'
+import { getRooms } from '../../services/ric/roomService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import RoomAssignModal from '../../components/RoomAssignModal'
@@ -16,19 +17,25 @@ export default function FrontDeskPage() {
   const [selected, setSelected] = useState(null)
 
   const [allStays, setAllStays] = useState([])
+  // Stays carry only assignedRoomId (a PK), so load the rooms to show the real room number.
+  const [roomNumbers, setRoomNumbers] = useState({})
 
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const [up, st, fullSt] = await Promise.all([
+      const [up, st, fullSt, rooms] = await Promise.all([
         getUpcoming().catch(() => []),
         getStays({ status: 'ACTIVE' }).catch(() => []),
         getStays().catch(() => []),
+        getRooms().catch(() => []),
       ])
       setArrivals(up); setStays(st); setAllStays(fullSt)
+      setRoomNumbers(Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber])))
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
+
+  const roomLabel = (roomId) => roomNumbers[roomId] ?? (roomId != null ? `id ${roomId}` : '—')
 
   const activeResIds = new Set(stays.map(s => s.reservationId))
   const checkedOutResIds = new Set(allStays.filter(s => s.status === 'CHECKEDOUT').map(s => s.reservationId))
@@ -84,7 +91,7 @@ export default function FrontDeskPage() {
                       {stays.map(s => (
                         <tr key={s.stayId}>
                           <td>{s.stayId}</td>
-                          <td>{s.assignedRoomId}</td>
+                          <td>{roomLabel(s.assignedRoomId)}</td>
                           <td>₹{s.folioBalance}</td>
                           <td><Button as={Link} to={`/stays/${s.stayId}`} size="sm" variant="outline-primary">Folio</Button></td>
                         </tr>

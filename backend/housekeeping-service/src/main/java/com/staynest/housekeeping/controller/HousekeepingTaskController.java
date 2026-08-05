@@ -21,8 +21,9 @@ public class HousekeepingTaskController {
 
     private final HousekeepingTaskService taskService;
 
+    // Front desk raises housekeeping work; housekeeping staff carry it out.
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'HOUSEKEEPING')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'HOUSEKEEPING')")
     public ResponseEntity<ApiResponse<HousekeepingTaskResponse>> create(@Valid @RequestBody HousekeepingTaskRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Task created", taskService.createTask(request)));
@@ -46,16 +47,18 @@ public class HousekeepingTaskController {
         return ResponseEntity.ok(ApiResponse.success(taskService.getTaskById(id)));
     }
 
+    // Front desk assigns work to a specific housekeeping staff member.
     @PatchMapping("/{id}/assign")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HOUSEKEEPING')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'HOUSEKEEPING')")
     public ResponseEntity<ApiResponse<HousekeepingTaskResponse>> assign(
             @PathVariable Integer id,
             @RequestParam Integer staffId) {
         return ResponseEntity.ok(ApiResponse.success("Task assigned", taskService.assignTask(id, staffId)));
     }
 
+    // FRONTDESK included so it can cancel (SKIP) work it raised; HOUSEKEEPING progresses tasks.
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HOUSEKEEPING')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'HOUSEKEEPING')")
     public ResponseEntity<ApiResponse<HousekeepingTaskResponse>> updateStatus(
             @PathVariable Integer id,
             @RequestParam TaskStatus status) {

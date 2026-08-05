@@ -53,8 +53,10 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
         HousekeepingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + taskId));
         
+        // Assigning is not the same as starting: front desk assigns the work, and the assigned
+        // housekeeping staff member is the one who moves it to INPROGRESS. Forcing INPROGRESS here
+        // also used to resurrect already-DONE tasks.
         task.setAssignedToId(staffId);
-        task.setStatus(TaskStatus.INPROGRESS);
         HousekeepingTask updated = taskRepository.save(task);
         log.info("Task {} assigned to staff {}", taskId, staffId);
         notify(staffId, "You have been assigned housekeeping task #" + updated.getTaskId()

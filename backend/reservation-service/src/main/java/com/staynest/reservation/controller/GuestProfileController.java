@@ -37,6 +37,16 @@ public class GuestProfileController {
         return ResponseEntity.ok(ApiResponse.success(guestProfileService.getAllGuests()));
     }
 
+    /**
+     * The caller's own guest profile, resolved from the JWT. Clients must use the guestId from
+     * here rather than their IAM userId — the two are different keys in different services.
+     */
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<GuestProfileResponse>> me() {
+        return ResponseEntity.ok(ApiResponse.success(guestProfileService.getOrCreateCurrentGuest()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<GuestProfileResponse>> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(guestProfileService.getGuestById(id)));

@@ -4,7 +4,7 @@ import { createReservation } from '../services/rbm/reservationService'
 import { useAuth } from '../context/AuthContext'
 
 export default function BookingConfirmModal({ data, onClose }) {
-  const { user } = useAuth()
+  const { guestId, user } = useAuth()
   const [ratePlanId, setRatePlanId] = useState(data.ratePlans?.[0]?.ratePlanId || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -19,9 +19,19 @@ export default function BookingConfirmModal({ data, onClose }) {
     if (!data.type?.roomTypeId) {
       setError('Room type is unavailable — please retry your search.'); setSaving(false); return
     }
+    const partySize = Number(data.adults) + Number(data.children || 0)
+    if (data.type.maxOccupancy && partySize > data.type.maxOccupancy) {
+      setError(`This room type sleeps up to ${data.type.maxOccupancy} guest(s), but ${partySize} were selected.`)
+      setSaving(false); return
+    }
+    if (!guestId) {
+      setError('Your guest profile could not be loaded — please sign in again.'); setSaving(false); return
+    }
     try {
       await createReservation({
-        guestId: user?.userId || 1,
+        // Must be the reservation-service guestId, not the IAM userId. Sending userId filed the
+        // booking under a different, auto-created profile, so it never showed in My Reservations.
+        guestId,
         roomTypeId: data.type.roomTypeId,
         ratePlanId: Number(ratePlanId) || null,
         checkInDate: data.checkIn,
@@ -33,7 +43,10 @@ export default function BookingConfirmModal({ data, onClose }) {
         bookingChannel: 'DIRECT',
       })
       setDone(true)
-      setTimeout(() => { onClose(); window.location.href = '/my-reservations' }, 1200)
+      // /my-reservations is guest-only now, so send staff to the shared reservations list
+      // instead of bouncing them onto the unauthorized page.
+      const dest = user?.role === 'GUEST' ? '/my-reservations' : '/reservations'
+      setTimeout(() => { onClose(); window.location.href = dest }, 1200)
     } catch (err) { setError(err.message) } finally { setSaving(false) }
   }
 
@@ -48,6 +61,7 @@ export default function BookingConfirmModal({ data, onClose }) {
             {error && <Alert variant="danger" className="py-2">{error}</Alert>}
             <p><Badge bg="primary">{data.type?.name}</Badge> {data.type?.bedConfiguration}</p>
             <p className="small text-muted">Check-in: {data.checkIn} · Check-out: {data.checkOut} · {nights} night(s)</p>
+            <p className="small text-muted">{data.adults} adult(s), {data.children || 0} child(ren) · sleeps up to {data.type?.maxOccupancy}</p>
             <p className="small text-muted">Your room number is assigned when you check in.</p>
             <Form.Group className="mb-3">
               <Form.Label>Rate Plan</Form.Label>

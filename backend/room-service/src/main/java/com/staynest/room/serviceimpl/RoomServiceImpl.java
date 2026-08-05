@@ -7,6 +7,7 @@ import com.staynest.room.entity.RoomType;
 import com.staynest.room.enums.RoomStatus;
 import com.staynest.room.exception.BadRequestException;
 import com.staynest.room.exception.ResourceNotFoundException;
+import com.staynest.room.exception.ServiceUnavailableException;
 import com.staynest.room.repository.RoomRepository;
 import com.staynest.room.repository.RoomTypeRepository;
 import com.staynest.room.service.RoomService;
@@ -72,55 +73,70 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public List<RoomResponse> getAvailableRooms(String checkIn, String checkOut) {
         List<Room> available = roomRepository.findByStatus(RoomStatus.AVAILABLE);
-        if (checkIn == null || checkOut == null || reservationServiceClient == null) {
+        // With no dates there is no availability question to answer — return the physical rooms.
+        if (checkIn == null || checkOut == null) {
             return available.stream().map(this::mapToResponse).collect(Collectors.toList());
         }
 
-        try {
-            var resResponse = reservationServiceClient.getAllReservations(null);
-            if (resResponse != null && resResponse.getData() instanceof List) {
-                List<?> reservations = (List<?>) resResponse.getData();
-                java.time.LocalDate searchIn = java.time.LocalDate.parse(checkIn);
-                java.time.LocalDate searchOut = java.time.LocalDate.parse(checkOut);
-
-                java.util.Map<Integer, Long> bookedCounts = reservations.stream()
-                        .filter(obj -> obj instanceof java.util.Map)
-                        .map(obj -> (java.util.Map<?, ?>) obj)
-                        .filter(map -> {
-                            Object status = map.get("status");
-                            if (status == null) return false;
-                            String st = status.toString();
-                            if (!"CONFIRMED".equalsIgnoreCase(st) && !"CHECKEDIN".equalsIgnoreCase(st)) return false;
-                            Object inObj = map.get("checkInDate");
-                            Object outObj = map.get("checkOutDate");
-                            if (inObj == null || outObj == null) return false;
-                            java.time.LocalDate resIn = java.time.LocalDate.parse(inObj.toString());
-                            java.time.LocalDate resOut = java.time.LocalDate.parse(outObj.toString());
-                            return resIn.isBefore(searchOut) && resOut.isAfter(searchIn);
-                        })
-                        .filter(map -> map.get("roomTypeId") != null)
-                        .collect(Collectors.groupingBy(map -> Integer.parseInt(map.get("roomTypeId").toString()), Collectors.counting()));
-
-                java.util.Map<Integer, List<Room>> roomsByType = available.stream()
-                        .collect(Collectors.groupingBy(r -> r.getRoomType().getRoomTypeId()));
-
-                List<Room> filtered = new java.util.ArrayList<>();
-                for (var entry : roomsByType.entrySet()) {
-                    Integer typeId = entry.getKey();
-                    List<Room> typeRooms = entry.getValue();
-                    long booked = bookedCounts.getOrDefault(typeId, 0L);
-                    int remainingCount = Math.max(0, (int) (typeRooms.size() - booked));
-                    for (int i = 0; i < remainingCount && i < typeRooms.size(); i++) {
-                        filtered.add(typeRooms.get(i));
-                    }
-                }
-                return filtered.stream().map(this::mapToResponse).collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to filter availability against reservation-service: {}", e.getMessage());
+        // Anything that stops us cross-checking existing reservations must fail closed. Returning
+        // the unfiltered list would advertise rooms that are already booked and invite double
+        // bookings, which is exactly what happened while the JWT was not being forwarded.
+        if (reservationServiceClient == null) {
+            throw new ServiceUnavailableException(
+                    "Cannot verify room availability: reservation-service client is unavailable.");
         }
 
-        return available.stream().map(this::mapToResponse).collect(Collectors.toList());
+        List<?> reservations;
+        try {
+            var resResponse = reservationServiceClient.getAllReservations(null);
+            if (resResponse == null || !(resResponse.getData() instanceof List)) {
+                throw new ServiceUnavailableException(
+                        "Cannot verify room availability: reservation-service returned no data.");
+            }
+            reservations = (List<?>) resResponse.getData();
+        } catch (ServiceUnavailableException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Availability cross-check against reservation-service failed", e);
+            throw new ServiceUnavailableException(
+                    "Cannot verify room availability right now. Please try again in a moment.");
+        }
+
+        java.time.LocalDate searchIn = java.time.LocalDate.parse(checkIn);
+        java.time.LocalDate searchOut = java.time.LocalDate.parse(checkOut);
+
+        java.util.Map<Integer, Long> bookedCounts = reservations.stream()
+                .filter(obj -> obj instanceof java.util.Map)
+                .map(obj -> (java.util.Map<?, ?>) obj)
+                .filter(map -> {
+                    Object status = map.get("status");
+                    if (status == null) return false;
+                    String st = status.toString();
+                    if (!"CONFIRMED".equalsIgnoreCase(st) && !"CHECKEDIN".equalsIgnoreCase(st)) return false;
+                    Object inObj = map.get("checkInDate");
+                    Object outObj = map.get("checkOutDate");
+                    if (inObj == null || outObj == null) return false;
+                    java.time.LocalDate resIn = java.time.LocalDate.parse(inObj.toString());
+                    java.time.LocalDate resOut = java.time.LocalDate.parse(outObj.toString());
+                    return resIn.isBefore(searchOut) && resOut.isAfter(searchIn);
+                })
+                .filter(map -> map.get("roomTypeId") != null)
+                .collect(Collectors.groupingBy(map -> Integer.parseInt(map.get("roomTypeId").toString()), Collectors.counting()));
+
+        java.util.Map<Integer, List<Room>> roomsByType = available.stream()
+                .collect(Collectors.groupingBy(r -> r.getRoomType().getRoomTypeId()));
+
+        List<Room> filtered = new java.util.ArrayList<>();
+        for (var entry : roomsByType.entrySet()) {
+            Integer typeId = entry.getKey();
+            List<Room> typeRooms = entry.getValue();
+            long booked = bookedCounts.getOrDefault(typeId, 0L);
+            int remainingCount = Math.max(0, (int) (typeRooms.size() - booked));
+            for (int i = 0; i < remainingCount && i < typeRooms.size(); i++) {
+                filtered.add(typeRooms.get(i));
+            }
+        }
+        return filtered.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Override

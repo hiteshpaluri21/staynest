@@ -1,6 +1,7 @@
 package com.staynest.reservation.serviceimpl;
 
 import com.staynest.reservation.client.RoomServiceClient;
+import com.staynest.reservation.dto.ApiResponse;
 import com.staynest.reservation.dto.ReservationRequest;
 import com.staynest.reservation.dto.ReservationResponse;
 import com.staynest.reservation.entity.GuestProfile;
@@ -114,14 +115,28 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 
 		// Validate roomType
+		ApiResponse<?> roomTypeResp;
 		try {
-			roomServiceClient.getRoomTypeById(request.getRoomTypeId());
+			roomTypeResp = roomServiceClient.getRoomTypeById(request.getRoomTypeId());
 		} catch (FeignException.NotFound e) {
 			throw new BadRequestException("Invalid RoomTypeId: " + request.getRoomTypeId());
 		} catch (Exception e) {
 			log.error("room-service call failed while validating RoomTypeId {}", request.getRoomTypeId(), e);
 			throw new BadRequestException("Unable to validate RoomTypeId " + request.getRoomTypeId()
 					+ " (room-service error: " + e.getMessage() + ")");
+		}
+
+		// The party must fit the room type. maxOccupancy comes back from room-service as
+		// untyped JSON, so read it defensively and only enforce when it is actually present.
+		int adults = request.getAdults() != null ? request.getAdults() : 0;
+		int children = request.getChildren() != null ? request.getChildren() : 0;
+		if (children < 0) {
+			throw new BadRequestException("Number of children cannot be negative.");
+		}
+		Integer maxOccupancy = extractMaxOccupancy(roomTypeResp);
+		if (maxOccupancy != null && maxOccupancy > 0 && adults + children > maxOccupancy) {
+			throw new BadRequestException("This room type sleeps a maximum of " + maxOccupancy
+					+ " guest(s), but " + (adults + children) + " were selected.");
 		}
 
 		// Check date-overlapping reservations against total physical rooms for
@@ -301,6 +316,27 @@ public class ReservationServiceImpl implements ReservationService {
 			log.warn("Could not resolve real identity for guestId {}: {}", guestId, e.getMessage());
 		}
 		return new String[] { name, email };
+	}
+
+	/**
+	 * Pulls maxOccupancy out of a room-service room-type payload, which arrives as untyped
+	 * JSON. Returns null when the field is missing or unparseable so the caller can skip the
+	 * occupancy check rather than reject a booking because of a deserialization quirk.
+	 */
+	private Integer extractMaxOccupancy(ApiResponse<?> roomTypeResp) {
+		if (roomTypeResp == null || !(roomTypeResp.getData() instanceof java.util.Map)) {
+			return null;
+		}
+		Object value = ((java.util.Map<?, ?>) roomTypeResp.getData()).get("maxOccupancy");
+		if (value == null) {
+			return null;
+		}
+		try {
+			return Integer.valueOf(value.toString().trim());
+		} catch (NumberFormatException e) {
+			log.warn("Unparseable maxOccupancy from room-service: {}", value);
+			return null;
+		}
 	}
 
 	private ReservationResponse mapToResponse(Reservation r) {

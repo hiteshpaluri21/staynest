@@ -1,3 +1,5 @@
+import { authError } from '../../utils/session'
+
 const BASE_URL = '/api/users'
 
 const toQuery = (params) => {
@@ -16,11 +18,8 @@ const request = async (url, options = {}) => {
 
   const res = await fetch(url, { ...options, headers })
 
-  if (res.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('staynest_auth')
-    if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
-    throw new Error('Unauthorized')
+  if (res.status === 401 || res.status === 403) {
+    throw authError(res.status)
   }
 
   const ct = res.headers.get('content-type') || ''
@@ -39,6 +38,9 @@ export const getUsers = () => request(BASE_URL)
 export const getUserById = (id) => request(`${BASE_URL}/${id}`)
 
 export const getUserByEmail = (email) => request(`${BASE_URL}/email/${email}`)
+
+// Active users of a given role, e.g. the housekeeping staff a task can be assigned to.
+export const getUsersByRole = (role) => request(`${BASE_URL}/role/${role}`)
 
 export const createUser = (data) => request(BASE_URL, { method: 'POST', body: JSON.stringify(data) })
 

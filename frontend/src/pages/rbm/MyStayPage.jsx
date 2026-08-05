@@ -7,13 +7,13 @@ import { getOrders, placeOrder } from '../../services/fbm/orderService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
-import AddChargeModal from '../../components/AddChargeModal'
+import RequestServiceModal from '../../components/RequestServiceModal'
 import { statusBadge } from '../../utils/badges'
 
 const MENU_CATEGORIES = ['BREAKFAST', 'MAINCOURSE', 'BEVERAGE', 'DESSERT']
 
 export default function MyStayPage() {
-  const { user } = useAuth()
+  const { user, guestId } = useAuth()
   const [stay, setStay] = useState(null)
   const [folio, setFolio] = useState([])
   const [orders, setOrders] = useState([])
@@ -31,7 +31,9 @@ export default function MyStayPage() {
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const stays = await getStays({ guestId: user?.userId }).catch(() => [])
+      // Stays are filed under the reservation-service guestId, not user.userId — passing the
+      // latter returned an empty list, so a checked-in guest was told they had no active stay.
+      const stays = await getStays({ guestId }).catch(() => [])
       const active = (stays || []).find(s => s.status === 'ACTIVE') || null
       setStay(active)
       if (active) {
@@ -49,7 +51,8 @@ export default function MyStayPage() {
       }
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
-  useEffect(() => { if (user) load() }, [user])
+  // Wait for guestId to resolve, otherwise the first load queries with undefined.
+  useEffect(() => { if (user && guestId) load() }, [user, guestId])
 
   const setQty = (id, qty) => setCart(c => {
     const next = { ...c }
@@ -113,7 +116,7 @@ export default function MyStayPage() {
           <Card className="shadow-sm">
             <Card.Header className="bg-white d-flex justify-content-between align-items-center">
               <strong>My Bill (Folio)</strong>
-              <Button size="sm" variant="outline-primary" disabled={stay.status !== 'ACTIVE'} onClick={() => setShowAddCharge(true)}>+ Add Charge</Button>
+              <Button size="sm" variant="outline-primary" disabled={stay.status !== 'ACTIVE'} onClick={() => setShowAddCharge(true)}>+ Request Service</Button>
             </Card.Header>
             <Card.Body>
               {folio.length === 0 ? <p className="text-muted mb-0">No charges yet.</p> :
@@ -203,7 +206,7 @@ export default function MyStayPage() {
         </Col>
       </Row>
 
-      <AddChargeModal
+      <RequestServiceModal
         show={showAddCharge}
         stayId={stay.stayId}
         onClose={() => setShowAddCharge(false)}

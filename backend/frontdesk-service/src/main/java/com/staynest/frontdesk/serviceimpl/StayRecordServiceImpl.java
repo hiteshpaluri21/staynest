@@ -34,6 +34,9 @@ public class StayRecordServiceImpl implements StayRecordService {
     private final RoomServiceClient roomServiceClient;
     private final ReservationServiceClient reservationServiceClient;
     private final com.staynest.frontdesk.client.NotificationServiceClient notificationServiceClient;
+    /** Optional so check-out still works if housekeeping-service is unreachable. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.staynest.frontdesk.client.HousekeepingServiceClient housekeepingServiceClient;
 
     /** Fire-and-forget notification; a failure here must never fail the primary action. */
     private void notify(Integer userId, String message) {
@@ -49,7 +52,9 @@ public class StayRecordServiceImpl implements StayRecordService {
     @Override
     @Transactional
     public StayRecordResponse checkIn(CheckInRequest request) {
-        Integer guestId = 1;
+        // Must be the reservation's own guestId. This used to default to 1, which filed the stay
+        // under an unrelated guest — the real guest then saw "no active stay" after check-in.
+        Integer guestId = null;
         try {
             var res = reservationServiceClient.getReservationById(request.getReservationId());
             if (res != null && res.getData() instanceof java.util.Map<?, ?> map) {
@@ -63,6 +68,11 @@ public class StayRecordServiceImpl implements StayRecordService {
             log.error("reservation-service call failed while validating ReservationId {}", request.getReservationId(), e);
             throw new BadRequestException("Unable to validate ReservationId " + request.getReservationId()
                     + " (reservation-service error: " + e.getMessage() + ")");
+        }
+
+        if (guestId == null) {
+            throw new BadRequestException("Reservation " + request.getReservationId()
+                    + " has no guest attached, so the stay cannot be filed against a guest.");
         }
 
         // Check if stay already exists for this reservation
@@ -171,6 +181,23 @@ public class StayRecordServiceImpl implements StayRecordService {
             reservationServiceClient.updateReservationStatus(stay.getReservationId(), "CHECKEDOUT");
         } catch (Exception e) {
             log.warn("Failed to update reservation status: {}", e.getMessage());
+        }
+
+        // Raise the post-checkout cleaning task. Unassigned on purpose: front desk picks the
+        // housekeeping staff member afterwards, the same way as any other assignment.
+        // Fire-and-forget — a housekeeping outage must not block a guest from checking out.
+        try {
+            if (housekeepingServiceClient != null) {
+                housekeepingServiceClient.createTask(java.util.Map.of(
+                        "roomId", stay.getAssignedRoomId(),
+                        "taskType", "CHECKOUT"));
+                log.info("CHECKOUT housekeeping task raised for room {}", stay.getAssignedRoomId());
+            } else {
+                log.warn("housekeeping-service client unavailable; no CHECKOUT task raised for room {}",
+                        stay.getAssignedRoomId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to raise CHECKOUT housekeeping task for room {}", stay.getAssignedRoomId(), e);
         }
 
         notify(stay.getGuestId(), "You have been checked out. Final folio total: " + total + ".");

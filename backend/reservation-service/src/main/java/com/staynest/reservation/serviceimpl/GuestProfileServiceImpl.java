@@ -26,6 +26,87 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     @Autowired
     private GuestProfileRepository guestProfileRepository;
 
+    /** Optional so the service still starts if iam-service is unreachable. */
+    @Autowired(required = false)
+    private com.staynest.reservation.client.IamServiceClient iamServiceClient;
+
+    @Override
+    public GuestProfileResponse getOrCreateCurrentGuest() {
+        String email = currentUserEmail();
+        if (email == null) {
+            throw new BadRequestException("No authenticated user to resolve a guest profile for.");
+        }
+
+        // Registration stores name/phone on the IAM user, not here, so carry them across rather
+        // than making the guest type their phone number a second time when they book.
+        java.util.Map<String, Object> iamUser = fetchIamUser(email);
+
+        GuestProfile guest = guestProfileRepository.findByEmail(email).orElseGet(() -> {
+            GuestProfile gp = new GuestProfile();
+            gp.setName(valueOf(iamUser, "name", localPart(email)));
+            gp.setEmail(email);
+            gp.setPhone(valueOf(iamUser, "phone", null));
+            gp.setStatus(GuestStatus.ACTIVE);
+            gp.setLoyaltyTier(LoyaltyTier.NONE);
+            log.info("Provisioning GuestProfile for authenticated user {}", email);
+            return guestProfileRepository.save(gp);
+        });
+
+        // Back-fill for profiles created before this ran (or created by the booking path).
+        if (isBlank(guest.getPhone())) {
+            String iamPhone = valueOf(iamUser, "phone", null);
+            if (!isBlank(iamPhone)) {
+                guest.setPhone(iamPhone);
+                guest = guestProfileRepository.save(guest);
+                log.info("Back-filled phone for guest {} from iam-service", guest.getGuestId());
+            }
+        }
+        return mapToResponse(guest);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private static String localPart(String email) {
+        int at = email.indexOf('@');
+        return at > 0 ? email.substring(0, at) : email;
+    }
+
+    /** Reads a string field from the IAM user payload, falling back when absent or blank. */
+    private static String valueOf(java.util.Map<String, Object> user, String key, String fallback) {
+        if (user == null) {
+            return fallback;
+        }
+        Object v = user.get(key);
+        return (v != null && !v.toString().isBlank()) ? v.toString() : fallback;
+    }
+
+    /** Best-effort IAM user lookup; returns null if iam-service is unreachable. */
+    private java.util.Map<String, Object> fetchIamUser(String email) {
+        try {
+            if (iamServiceClient != null) {
+                var resp = iamServiceClient.getUserByEmail(email);
+                if (resp != null && resp.getData() != null) {
+                    return resp.getData();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not load iam-service user for {}: {}", email, e.getMessage());
+        }
+        return null;
+    }
+
+    /** The JWT subject is the user's email (see JwtUtil / JwtFilter). */
+    private String currentUserEmail() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
+            return null;
+        }
+        return auth.getName();
+    }
+
+
     @Override
     public GuestProfileResponse createGuestProfile(GuestProfileRequest request) {
         if (guestProfileRepository.existsByEmail(request.getEmail())) {

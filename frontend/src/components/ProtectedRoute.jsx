@@ -3,10 +3,11 @@ import { useAuth } from '../context/AuthContext.jsx'
 
 const ROLE_ACCESS = {
   ADMIN: ['*'],
+  // /my-reservations is a guest's own booking list, so only GUEST lists it.
   GUEST: ['/book', '/my-reservations', '/my-stay', '/profile', '/notifications', '/menu', '/rate-plans', '/maintenance'],
-  FRONTDESK: ['/book', '/my-reservations', '/reservations', '/profile', '/notifications', '/front-desk', '/stays', '/stay-records'],
-  HOUSEKEEPING: ['/book', '/my-reservations', '/profile', '/notifications', '/housekeeping', '/maintenance'],
-  FBMANAGER: ['/book', '/my-reservations', '/profile', '/notifications', '/menu', '/orders', '/dining-reservations'],
+  FRONTDESK: ['/book', '/reservations', '/profile', '/notifications', '/front-desk', '/stays', '/stay-records', '/housekeeping'],
+  HOUSEKEEPING: ['/book', '/profile', '/notifications', '/housekeeping', '/maintenance'],
+  FBMANAGER: ['/book', '/profile', '/notifications', '/menu', '/orders', '/dining-reservations'],
 }
 
 function hasAccess(role, path) {
@@ -15,7 +16,12 @@ function hasAccess(role, path) {
   return allowed.some(p => path === p || path.startsWith(p + '/'))
 }
 
-export default function ProtectedRoute({ children, requiredRole, roles }) {
+/**
+ * `strict` makes the `roles` list authoritative for ADMIN too. ADMIN normally bypasses every
+ * check, so it is the only way to keep a genuinely role-specific page (e.g. a guest's own
+ * "My Reservations") off an admin's hands.
+ */
+export default function ProtectedRoute({ children, requiredRole, roles, strict = false }) {
   const { isAuthenticated, user, loading } = useAuth()
   const location = useLocation()
 
@@ -33,7 +39,7 @@ export default function ProtectedRoute({ children, requiredRole, roles }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (roles && roles.length > 0 && !roles.includes(user?.role) && user?.role !== 'ADMIN') {
+  if (roles && roles.length > 0 && !roles.includes(user?.role) && (strict || user?.role !== 'ADMIN')) {
     return <Navigate to="/unauthorized" replace />
   }
 

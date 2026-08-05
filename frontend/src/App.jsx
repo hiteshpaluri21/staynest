@@ -22,8 +22,8 @@ import FBOrderPage from './pages/fbm/FBOrderPage'
 import DiningReservationPage from './pages/fbm/DiningReservationPage'
 import NotificationsPage from './pages/nal/NotificationsPage'
 
-const withLayout = (roles, el) => (
-  <ProtectedRoute roles={roles}>
+const withLayout = (roles, el, opts = {}) => (
+  <ProtectedRoute roles={roles} strict={opts.strict}>
     <Layout>{el}</Layout>
   </ProtectedRoute>
 )
@@ -41,7 +41,8 @@ export default function App() {
       <Route path="/rate-plans" element={withLayout(['ADMIN', 'GUEST'], <RatePlanPage />)} />
 
       <Route path="/book" element={withLayout(['GUEST', 'ADMIN'], <BookingSearchPage />)} />
-      <Route path="/my-reservations" element={withLayout(['GUEST', 'ADMIN'], <MyReservationsPage />)} />
+      {/* Guest-only, strict: admins use /reservations, which shows the same data for everyone. */}
+      <Route path="/my-reservations" element={withLayout(['GUEST'], <MyReservationsPage />, { strict: true })} />
       <Route path="/my-stay" element={withLayout(['GUEST', 'ADMIN'], <MyStayPage />)} />
       <Route path="/reservations" element={withLayout(['FRONTDESK', 'ADMIN'], <ReservationsPage />)} />
       <Route path="/profile" element={withLayout(['GUEST', 'FRONTDESK', 'ADMIN'], <GuestProfilePage />)} />
@@ -50,7 +51,8 @@ export default function App() {
       <Route path="/stay-records" element={withLayout(['FRONTDESK', 'ADMIN'], <StayRecordsPage />)} />
       <Route path="/stays/:stayId" element={withLayout(['FRONTDESK', 'ADMIN'], <StayDetailPage />)} />
 
-      <Route path="/housekeeping" element={withLayout(['HOUSEKEEPING', 'ADMIN'], <HousekeepingPage />)} />
+      {/* Front desk raises tasks here; housekeeping processes them. */}
+      <Route path="/housekeeping" element={withLayout(['HOUSEKEEPING', 'FRONTDESK', 'ADMIN'], <HousekeepingPage />)} />
       <Route path="/maintenance" element={withLayout(['HOUSEKEEPING', 'ADMIN', 'GUEST'], <MaintenancePage />)} />
 
       <Route path="/menu" element={withLayout(['FBMANAGER', 'ADMIN', 'GUEST'], <MenuPage />)} />

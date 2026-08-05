@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { validateEmail, validatePhone, validateName, normalizePhone, isClean } from '../utils/validation'
 
 export default function RegisterPage() {
   const { login } = useAuth()
@@ -15,23 +16,38 @@ export default function RegisterPage() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  // A field only shows its error once the user has interacted with it (or tried to submit),
+  // so the form does not open covered in red.
+  const [touched, setTouched] = useState({})
+
+  const validateAll = (values) => ({
+    name: validateName(values.name),
+    email: validateEmail(values.email),
+    phone: validatePhone(values.phone),
+    password: values.password.length < 6 ? 'Password must be at least 6 characters' : '',
+    confirmPassword: values.password !== values.confirmPassword ? 'Passwords do not match' : '',
+  })
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+    const next = { ...form, [name]: value }
+    setForm(next)
+    setFieldErrors(validateAll(next))
   }
+
+  const handleBlur = (e) => setTouched(prev => ({ ...prev, [e.target.name]: true }))
+
+  const showError = (field) => (touched[field] ? fieldErrors[field] || '' : '')
 
   const submit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters')
+    const errors = validateAll(form)
+    setFieldErrors(errors)
+    if (!isClean(errors)) {
+      setTouched({ name: true, email: true, phone: true, password: true, confirmPassword: true })
       return
     }
 
@@ -44,9 +60,10 @@ export default function RegisterPage() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          // Send the separator-free form so it matches the backend pattern exactly.
+          phone: normalizePhone(form.phone),
           password: form.password,
           role: 'GUEST'
         }),
@@ -84,9 +101,12 @@ export default function RegisterPage() {
                 name="name"
                 value={form.name}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                isInvalid={!!showError('name')}
                 required
                 placeholder="e.g. John Doe"
               />
+              <Form.Control.Feedback type="invalid">{showError('name')}</Form.Control.Feedback>
             </Form.Group>
 
             <Row>
@@ -98,9 +118,12 @@ export default function RegisterPage() {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    isInvalid={!!showError('email')}
                     required
                     placeholder="john@example.com"
                   />
+                  <Form.Control.Feedback type="invalid">{showError('email')}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
               <Col md={6}>
@@ -111,9 +134,15 @@ export default function RegisterPage() {
                     name="phone"
                     value={form.phone}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    isInvalid={!!showError('phone')}
                     required
-                    placeholder="+1 234 567 890"
+                    placeholder="9876543210"
                   />
+                  <Form.Control.Feedback type="invalid">{showError('phone')}</Form.Control.Feedback>
+                  {!showError('phone') && (
+                    <Form.Text className="text-muted">10 digits, optionally with a +country code.</Form.Text>
+                  )}
                 </Form.Group>
               </Col>
             </Row>
@@ -125,9 +154,12 @@ export default function RegisterPage() {
                 name="password"
                 value={form.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                isInvalid={!!showError('password')}
                 required
                 placeholder="At least 6 characters"
               />
+              <Form.Control.Feedback type="invalid">{showError('password')}</Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-4">
@@ -137,9 +169,12 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 value={form.confirmPassword}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                isInvalid={!!showError('confirmPassword')}
                 required
                 placeholder="Re-enter password"
               />
+              <Form.Control.Feedback type="invalid">{showError('confirmPassword')}</Form.Control.Feedback>
             </Form.Group>
 
             <Button

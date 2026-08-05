@@ -6,6 +6,9 @@ import { getRatePlans } from '../../services/ric/ratePlanService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import BookingConfirmModal from '../../components/BookingConfirmModal'
+import CompleteProfileModal from '../../components/CompleteProfileModal'
+import { useAuth } from '../../context/AuthContext'
+import { isProfileComplete } from '../../utils/validation'
 
 const formatDate = (date) => {
   const y = date.getFullYear()
@@ -31,6 +34,10 @@ export default function BookingSearchPage() {
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
   const [selectedType, setSelectedType] = useState(null)
+  // Room type the guest picked while their profile was still incomplete; booking resumes with
+  // it as soon as they finish filling in the missing details.
+  const [pendingType, setPendingType] = useState(null)
+  const { user, guest } = useAuth()
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleCheckInChange = (e) => {
@@ -67,6 +74,19 @@ export default function BookingSearchPage() {
     }, {})
   ).filter(g => g.type && g.count > 0)
 
+  // A room type can only be booked if the whole party fits within its max occupancy.
+  const partySize = Math.max(1, Number(form.adults) || 0) + Math.max(0, Number(form.children) || 0)
+
+  // Guests must have phone + ID details on file before reserving. Staff booking on a guest's
+  // behalf are not gated here.
+  const requestBooking = (selection) => {
+    if (user?.role === 'GUEST' && !isProfileComplete(guest)) {
+      setPendingType(selection)
+      return
+    }
+    setSelectedType(selection)
+  }
+
   // Only rate plans that are ACTIVE and valid for the whole selected stay
   // (validFrom on/before check-in, validTo on/after the last night) should appear.
   const plansByType = (id) => {
@@ -99,26 +119,45 @@ export default function BookingSearchPage() {
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         searched && availableTypes.length === 0 ? <EmptyState message="No room types available for selected dates" /> :
         <Row>
-          {availableTypes.map(({ roomTypeId, type: t, count }) => (
-            <Col md={6} lg={4} key={roomTypeId} className="mb-3">
-              <Card className="h-100 shadow-sm">
-                <Card.Body>
-                  <div className="d-flex justify-content-between">
-                    <h5><Badge bg="primary">{t.name}</Badge></h5>
-                    <Badge bg={count > 3 ? 'success' : 'warning'}>{count} available</Badge>
-                  </div>
-                  <div><strong>Base Rate:</strong> ₹{t.baseRate}/night</div>
-                  <div><strong>Max Occupancy:</strong> {t.maxOccupancy}</div>
-                  <div className="small text-muted mb-3">{t.bedConfiguration}</div>
-                  <Button size="sm" style={{ background: '#f59e0b', borderColor: '#f59e0b' }} onClick={() => setSelectedType({ type: t, availableCount: count })}>
-                    Book Now
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
+          {availableTypes.map(({ roomTypeId, type: t, count }) => {
+            const fits = !t.maxOccupancy || partySize <= t.maxOccupancy
+            return (
+              <Col md={6} lg={4} key={roomTypeId} className="mb-3">
+                <Card className="h-100 shadow-sm">
+                  <Card.Body>
+                    <div className="d-flex justify-content-between">
+                      <h5><Badge bg="primary">{t.name}</Badge></h5>
+                      <Badge bg={count > 3 ? 'success' : 'warning'}>{count} available</Badge>
+                    </div>
+                    <div><strong>Base Rate:</strong> ₹{t.baseRate}/night</div>
+                    <div><strong>Max Occupancy:</strong> {t.maxOccupancy}</div>
+                    <div className="small text-muted mb-3">{t.bedConfiguration}</div>
+                    <Button
+                      size="sm"
+                      disabled={!fits}
+                      style={fits ? { background: '#f59e0b', borderColor: '#f59e0b' } : undefined}
+                      onClick={() => requestBooking({ type: t, availableCount: count })}
+                    >
+                      Book Now
+                    </Button>
+                    {!fits && (
+                      <div className="small text-danger mt-2">
+                        Sleeps up to {t.maxOccupancy} guest(s) — you selected {partySize}.
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            )
+          })}
         </Row>
       }
+
+      <CompleteProfileModal
+        show={Boolean(pendingType)}
+        onClose={() => setPendingType(null)}
+        onCompleted={() => { setSelectedType(pendingType); setPendingType(null) }}
+      />
 
       {selectedType && (
         <BookingConfirmModal
