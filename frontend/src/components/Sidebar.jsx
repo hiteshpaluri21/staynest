@@ -11,7 +11,7 @@ const ALL_LINKS = [
   { to: '/book', label: 'Book a Room', icon: <FaSearch />, roles: ['GUEST', 'ADMIN'] },
   // Guest-only: admins get the same data (and more) from the Reservations page.
   { to: '/my-reservations', label: 'My Reservations', icon: <FaCalendarCheck />, roles: ['GUEST'] },
-  { to: '/my-stay', label: 'My Stay & Bill', icon: <FaReceipt />, roles: ['GUEST', 'ADMIN'] },
+  { to: '/my-stay', label: 'My Stay & Bill', icon: <FaReceipt />, roles: ['GUEST'] },
   { to: '/reservations', label: 'Reservations', icon: <FaListAlt />, roles: ['FRONTDESK', 'ADMIN'] },
   { to: '/profile', label: 'My Profile', icon: <FaIdCard />, roles: ['GUEST', 'FRONTDESK', 'ADMIN'] },
   { to: '/front-desk', label: 'Front Desk', icon: <FaConciergeBell />, roles: ['FRONTDESK', 'ADMIN'] },

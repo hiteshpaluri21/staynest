@@ -43,7 +43,8 @@ export default function App() {
       <Route path="/book" element={withLayout(['GUEST', 'ADMIN'], <BookingSearchPage />)} />
       {/* Guest-only, strict: admins use /reservations, which shows the same data for everyone. */}
       <Route path="/my-reservations" element={withLayout(['GUEST'], <MyReservationsPage />, { strict: true })} />
-      <Route path="/my-stay" element={withLayout(['GUEST', 'ADMIN'], <MyStayPage />)} />
+      {/* <Route path="/my-stay" element={withLayout(['GUEST', 'ADMIN'], <MyStayPage />)} /> */}
+      <Route path="/my-stay" element={withLayout(['GUEST'], <MyStayPage />)} />
       <Route path="/reservations" element={withLayout(['FRONTDESK', 'ADMIN'], <ReservationsPage />)} />
       <Route path="/profile" element={withLayout(['GUEST', 'FRONTDESK', 'ADMIN'], <GuestProfilePage />)} />
 
