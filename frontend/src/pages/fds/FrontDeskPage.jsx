@@ -48,7 +48,7 @@ export default function FrontDeskPage() {
         <Row>
           <Col md={7}>
             <Card className="shadow-sm mb-4">
-              <Card.Header className="bg-white"><strong>Today's Arrivals</strong></Card.Header>
+              <Card.Header><strong>Today's Arrivals</strong></Card.Header>
               <Card.Body>
                 {filteredArrivals.length === 0 ? <EmptyState message="No upcoming arrivals" /> :
                   <Table hover>
@@ -66,7 +66,7 @@ export default function FrontDeskPage() {
                               {isCheckedIn ? (
                                 <Badge bg="success">CHECKED IN</Badge>
                               ) : r.status === 'CONFIRMED' ? (
-                                <Button size="sm" style={{ background: '#16a34a', borderColor: '#16a34a' }} onClick={() => setSelected(r)}>Check-In</Button>
+                                <Button size="sm" variant="success" onClick={() => setSelected(r)}>Check-In</Button>
                               ) : (
                                 <Badge bg={statusBadge(r.status)}>{r.status}</Badge>
                               )}
@@ -82,7 +82,7 @@ export default function FrontDeskPage() {
           </Col>
           <Col md={5}>
             <Card className="shadow-sm">
-              <Card.Header className="bg-white"><strong>Active Stays</strong></Card.Header>
+              <Card.Header><strong>Active Stays</strong></Card.Header>
               <Card.Body>
                 {stays.length === 0 ? <EmptyState message="No active stays" /> :
                   <Table hover size="sm">

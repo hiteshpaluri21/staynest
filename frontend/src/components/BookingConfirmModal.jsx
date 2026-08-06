@@ -76,7 +76,7 @@ export default function BookingConfirmModal({ data, onClose }) {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving} style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>{saving ? 'Booking…' : 'Confirm Booking'}</Button>
+            <Button type="submit" disabled={saving} className="btn-accent">{saving ? 'Booking…' : 'Confirm Booking'}</Button>
           </Modal.Footer>
         </Form>
       )}

@@ -51,7 +51,7 @@ export default function LoginPage() {
     <div className="login-bg">
       <Card style={{ width: 400 }} className="shadow">
         <Card.Body className="p-4">
-          <h3 className="text-center mb-1" style={{ color: '#1e3a5f' }}>StayNest</h3>
+          <h3 className="text-center mb-1 brand-wordmark">StayNest</h3>
           <p className="text-center text-muted small mb-4">Hotel & Hospitality Management</p>
           {error && <Alert variant="danger" className="py-2">{error}</Alert>}
           <Form onSubmit={submit}>
@@ -63,15 +63,20 @@ export default function LoginPage() {
               <Form.Label>Password</Form.Label>
               <Form.Control type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••" />
             </Form.Group>
-            <Button type="submit" className="w-100" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} disabled={loading}>
+            <Button type="submit" className="w-100" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign In'}
             </Button>
           </Form>
           <div className="text-center mt-3">
             <span className="small text-muted">Don't have an account? </span>
-            <Link to="/register" className="small fw-bold" style={{ color: '#1e3a5f', textDecoration: 'none' }}>
+            <Link to="/register" className="small fw-bold text-primary text-decoration-none">
               Register as Guest
             </Link>
+          </div>
+          {/* "/" is the public hotel site, so someone who came here from a Book
+              button needs a way back out. */}
+          <div className="text-center mt-2">
+            <Link to="/" className="small text-muted text-decoration-none">← Back to hotel site</Link>
           </div>
         </Card.Body>
       </Card>

@@ -42,7 +42,7 @@ export default function RatePlanPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Rate Plans</h4>
-        {canManage && <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => setShowModal(true)}>+ Add Rate Plan</Button>}
+        {canManage && <Button onClick={() => setShowModal(true)}>+ Add Rate Plan</Button>}
       </div>
       <Form.Select style={{ maxWidth: 240 }} className="mb-3" value={filterType} onChange={e => setFilterType(e.target.value)}>
         <option value="">All Room Types</option>

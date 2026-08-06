@@ -66,7 +66,7 @@ export default function RoomAssignModal({ reservation, onClose, onDone }) {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving || !roomId} style={{ background: '#16a34a', borderColor: '#16a34a' }}>{saving ? 'Checking in…' : 'Confirm Check-In'}</Button>
+          <Button type="submit" variant="success" disabled={saving || !roomId}>{saving ? 'Checking in…' : 'Confirm Check-In'}</Button>
         </Modal.Footer>
       </Form>
     </Modal>

@@ -68,7 +68,7 @@ export default function StayDetailPage() {
         </Col>
         <Col md={8}>
           <Card className="shadow-sm">
-            <Card.Header className="bg-white"><strong>Folio Items</strong></Card.Header>
+            <Card.Header><strong>Folio Items</strong></Card.Header>
             <Card.Body>
               {items.length === 0 ? <p className="text-muted">No charges posted yet.</p> :
                 <Table hover size="sm">

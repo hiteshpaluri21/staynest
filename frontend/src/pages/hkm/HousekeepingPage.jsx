@@ -203,7 +203,7 @@ export default function HousekeepingPage() {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShow(false)}>Cancel</Button>
-            <Button type="submit" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Create Task</Button>
+            <Button type="submit">Create Task</Button>
           </Modal.Footer>
         </Form>
       </Modal>

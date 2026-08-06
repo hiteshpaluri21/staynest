@@ -129,7 +129,7 @@ export default function MyStayPage() {
       <Row>
         <Col md={5}>
           <Card className="shadow-sm mb-3">
-            <Card.Header className="bg-white"><strong>Stay Summary</strong></Card.Header>
+            <Card.Header><strong>Stay Summary</strong></Card.Header>
             <Card.Body>
               <div className="mb-2"><strong>Reservation:</strong> #{stay.reservationId}</div>
               <div className="mb-2"><strong>Room:</strong> {roomNumber != null ? `Room ${roomNumber}` : `Room #${stay.assignedRoomId}`}</div>
@@ -142,7 +142,7 @@ export default function MyStayPage() {
           </Card>
 
           <Card className="shadow-sm">
-            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+            <Card.Header className="d-flex justify-content-between align-items-center">
               <strong>My Bill (Folio)</strong>
               <Button size="sm" variant="outline-primary" disabled={stay.status !== 'ACTIVE'} onClick={() => setShowAddCharge(true)}>+ Request Service</Button>
             </Card.Header>
@@ -167,7 +167,7 @@ export default function MyStayPage() {
 
         <Col md={7}>
           <Card className="shadow-sm mb-3">
-            <Card.Header className="bg-white"><strong>Order Food & Beverage</strong></Card.Header>
+            <Card.Header><strong>Order Food & Beverage</strong></Card.Header>
             <Card.Body>
               {submitErr && <Alert variant="danger" className="py-2">{submitErr}</Alert>}
               {submitOk && <Alert variant="success" className="py-2">{submitOk}</Alert>}
@@ -203,13 +203,13 @@ export default function MyStayPage() {
                 <div className="d-flex justify-content-between mt-2">
                   <strong>Total</strong><strong className="text-primary">₹{cartTotal}</strong>
                 </div>
-                <Button type="submit" className="w-100 mt-2" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Place Order</Button>
+                <Button type="submit" className="w-100 mt-2">Place Order</Button>
               </Form>
             </Card.Body>
           </Card>
 
           <Card className="shadow-sm">
-            <Card.Header className="bg-white"><strong>My Orders</strong></Card.Header>
+            <Card.Header><strong>My Orders</strong></Card.Header>
             <Card.Body>
               {orders.length === 0 ? <EmptyState message="No orders yet" /> :
                 <Table hover size="sm" className="mb-0">

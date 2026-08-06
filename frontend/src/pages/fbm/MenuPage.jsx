@@ -37,7 +37,7 @@ export default function MenuPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Menu Items</h4>
-        {canManage && <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => setShowModal(true)}>+ Add Menu Item</Button>}
+        {canManage && <Button onClick={() => setShowModal(true)}>+ Add Menu Item</Button>}
       </div>
       <Form.Select style={{ maxWidth: 240 }} className="mb-3" value={catFilter} onChange={e => setCatFilter(e.target.value)}>
         <option value="">All Categories</option>

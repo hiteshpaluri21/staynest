@@ -28,7 +28,7 @@ export default function RoomTypePage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Room Types</h4>
-        <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={openCreate}>
+        <Button onClick={openCreate}>
           <FaPlus className="me-2" /> Add Room Type
         </Button>
       </div>

@@ -66,7 +66,7 @@ export default function RequestServiceModal({ show, stayId, onClose, onSaved }) 
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>
+          <Button type="submit" disabled={saving}>
             {saving ? 'Requesting…' : 'Confirm Request'}
           </Button>
         </Modal.Footer>

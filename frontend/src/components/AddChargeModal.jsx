@@ -45,7 +45,7 @@ export default function AddChargeModal({ show, stayId, item, onClose, onSaved })
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Post Charge')}</Button>
+          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Post Charge')}</Button>
         </Modal.Footer>
       </Form>
     </Modal>

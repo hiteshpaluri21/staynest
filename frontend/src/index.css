@@ -1,107 +1,883 @@
+/* ==========================================================================
+   StayNest theme
+   Every colour lives here as a token, defined twice: once for light and once
+   under [data-bs-theme="dark"]. Components reference the tokens, never a raw
+   hex — that is what lets the toggle in the top bar recolour the whole app.
+   ========================================================================== */
+
 :root {
-    --sn-primary: #1e3a5f;
+    /* Brand */
+    --sn-brand: #1e3a5f;
+    --sn-brand-hover: #16304f;
+    --sn-brand-active: #112640;
+    --sn-on-brand: #ffffff;
     --sn-accent: #f59e0b;
+
+    /* Surfaces */
+    --sn-app-bg: #f4f6f9;
+    --sn-surface: #ffffff;
+    --sn-surface-2: #f8fafc;
+    --sn-sidebar-bg: #1b3454;
+    --sn-sidebar-fg: #b9c7da;
+    --sn-sidebar-fg-active: #ffffff;
+    --sn-border: #e3e8ef;
+    --sn-text-muted: #64748b;
+
+    /* Shape — one radius scale, applied consistently */
+    --sn-radius: 10px;
+    --sn-radius-sm: 7px;
+    --sn-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+
+    /* Bootstrap overrides so its own components pick up the brand */
+    --bs-primary: var(--sn-brand);
+    --bs-primary-rgb: 30, 58, 95;
+    --bs-body-bg: var(--sn-app-bg);
+    --bs-border-color: var(--sn-border);
+    --bs-secondary-color: var(--sn-text-muted);
+    --bs-border-radius: var(--sn-radius-sm);
+    --bs-link-color: var(--sn-brand);
+    --bs-link-hover-color: var(--sn-brand-hover);
+}
+
+/* Dark palette — the same navy-and-amber identity as light mode, with the lights
+   off. Surfaces are navy-tinted rather than neutral grey, so the brand still reads
+   as StayNest; amber stays exactly the accent it is in light mode.
+   The one value that cannot carry over is the brand navy itself: #1e3a5f on a navy
+   canvas is invisible, so buttons and links lift to #3d6fae — same hue family, and
+   ~5:1 against white label text, which passes AA. */
+[data-bs-theme="dark"] {
+    --sn-brand: #3d6fae;
+    --sn-brand-hover: #4880c2;
+    --sn-brand-active: #335f96;
+    --sn-on-brand: #ffffff;
+    --sn-accent: #f0a726;
+
+    --sn-app-bg: #131b2b;
+    --sn-surface: #1b2740;
+    /* Recessed areas inside a card (table headers, hover fills) sit between the
+       canvas and the card so they read as sunken. */
+    --sn-surface-2: #16203a;
+    /* The sidebar is the darkest chrome, which anchors the left edge. */
+    --sn-sidebar-bg: #0f1725;
+    --sn-sidebar-fg: #9dabc2;
+    --sn-sidebar-fg-active: #ffffff;
+    --sn-border: #2c3a56;
+    --sn-text-muted: #93a2ba;
+
+    --sn-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .25);
+
+    --bs-primary: var(--sn-brand);
+    --bs-primary-rgb: 61, 111, 174;
+    --bs-body-bg: var(--sn-app-bg);
+    --bs-body-color: #e8edf5;
+    --bs-border-color: var(--sn-border);
+    --bs-secondary-color: var(--sn-text-muted);
+    --bs-emphasis-color: #f2f6fb;
+}
+
+/* --------------------------------------------------------------- base ---- */
+
+html {
+    scroll-behavior: smooth;
 }
 
 body {
-    background: #f5f7fa;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--sn-app-bg);
+    color: var(--bs-body-color);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
+
+/* Only colours transition, so switching themes doesn't animate layout. */
+body,
+.sidebar,
+.top-navbar,
+.card,
+.modal-content,
+.kanban-col,
+.task-card {
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+.text-muted {
+    color: var(--sn-text-muted) !important;
+}
+
+/* ------------------------------------------------------------- layout ---- */
 
 .app-layout {
     display: flex;
     min-height: 100vh;
 }
 
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* ------------------------------------------------------------ sidebar ---- */
+
 .sidebar {
-    width: 240px;
-    background: var(--sn-primary);
-    color: #fff;
+    width: 232px;
+    flex-shrink: 0;
+    background: var(--sn-sidebar-bg);
+    color: var(--sn-sidebar-fg-active);
     min-height: 100vh;
-}
-
-.sidebar .nav-link {
-    color: #cfd8e3;
-    border-radius: 6px;
-    margin: 4px 8px;
-    padding: 10px 14px;
-}
-
-.sidebar .nav-link:hover,
-.sidebar .nav-link.active {
-    background: rgba(255, 255, 255, .12);
-    color: #fff;
+    padding-bottom: 1rem;
 }
 
 .sidebar .brand {
-    padding: 18px 16px;
-    font-size: 1.25rem;
+    padding: 18px 20px;
+    font-size: 1.2rem;
     font-weight: 700;
-    border-bottom: 1px solid rgba(255, 255, 255, .1);
+    letter-spacing: -.02em;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
 }
 
 .sidebar .brand span {
     color: var(--sn-accent);
 }
 
-.main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.top-navbar {
-    background: #fff;
-    border-bottom: 1px solid #e5e8ec;
-}
-
-.login-bg {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #1e3a5f, #3b5d85);
+.sidebar .nav-link {
+    color: var(--sn-sidebar-fg);
+    border-radius: var(--sn-radius-sm);
+    margin: 2px 10px;
+    padding: 9px 12px;
+    font-size: .9rem;
     display: flex;
     align-items: center;
-    justify-content: center;
+    /* Reserve the active marker's space up front so rows don't shift on hover. */
+    border-left: 3px solid transparent;
+}
+
+.sidebar .nav-link:hover {
+    background: rgba(255, 255, 255, .07);
+    color: var(--sn-sidebar-fg-active);
+}
+
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, .11);
+    color: var(--sn-sidebar-fg-active);
+    border-left-color: var(--sn-accent);
+    font-weight: 600;
+}
+
+/* ----------------------------------------------------------- top bar ---- */
+
+.top-navbar {
+    background: var(--sn-surface);
+    border-bottom: 1px solid var(--sn-border);
+}
+
+.brand-wordmark {
+    color: var(--sn-brand);
+    font-weight: 700;
+    letter-spacing: -.01em;
+}
+
+[data-bs-theme="dark"] .brand-wordmark {
+    color: #e8edf5;
+}
+
+.theme-toggle {
+    color: var(--sn-text-muted);
+    padding: .4rem .55rem;
+    line-height: 1;
+    border-radius: var(--sn-radius-sm);
+    text-decoration: none;
+}
+
+.theme-toggle:hover {
+    color: var(--sn-brand);
+    background: var(--sn-surface-2);
+}
+
+[data-bs-theme="dark"] .theme-toggle:hover {
+    color: var(--sn-accent);
+}
+
+.user-menu-toggle {
+    color: var(--bs-body-color);
+    background: var(--sn-surface-2);
+    border: 1px solid var(--sn-border);
+    padding: .35rem .7rem;
+    border-radius: var(--sn-radius-sm);
+    text-decoration: none;
+}
+
+.user-menu-toggle:hover,
+.user-menu-toggle:focus,
+.user-menu-toggle.show {
+    color: var(--bs-body-color);
+    background: var(--sn-surface);
+    border-color: var(--sn-brand);
+}
+
+/* Bootstrap's caret on a link-variant toggle inherits the link colour; keep it neutral. */
+.user-menu-toggle::after {
+    color: var(--sn-text-muted);
+}
+
+/* ------------------------------------------------------------- cards ---- */
+
+.card {
+    --bs-card-bg: var(--sn-surface);
+    --bs-card-border-color: var(--sn-border);
+    --bs-card-border-radius: var(--sn-radius);
+    --bs-card-inner-border-radius: var(--sn-radius);
+}
+
+/* The old look leaned on drop shadows; a hairline border reads cleaner and
+   survives dark mode, where shadows are nearly invisible. */
+.card.shadow-sm {
+    box-shadow: var(--sn-shadow) !important;
+    border: 1px solid var(--sn-border);
+}
+
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--sn-border);
+    font-weight: 600;
+    padding: .8rem 1rem;
 }
 
 .kpi-card {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    box-shadow: var(--sn-shadow);
 }
 
 .kpi-card .card-body {
-    padding: 1.25rem 1.5rem;
+    padding: 1.15rem 1.35rem;
 }
 
 .kpi-value {
-    font-size: 1.75rem;
+    font-size: 1.7rem;
     font-weight: 700;
-    color: var(--sn-primary);
+    letter-spacing: -.02em;
+    color: var(--sn-brand);
 }
 
+[data-bs-theme="dark"] .kpi-value {
+    color: #e8edf5;
+}
+
+/* ------------------------------------------------------------ tables ---- */
+
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--bs-body-color);
+    --bs-table-border-color: var(--sn-border);
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background: var(--sn-surface-2);
+    color: var(--sn-text-muted);
+    font-size: .74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1px solid var(--sn-border);
+    white-space: nowrap;
+}
+
+.table>:not(:first-child) {
+    border-top: 0;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* ----------------------------------------------------------- buttons ---- */
+
+/* <Button> with no variant renders btn-primary, which is how the brand button
+   is spelled throughout the app. Restyling it here means no inline colours. */
+.btn-primary {
+    --bs-btn-bg: var(--sn-brand);
+    --bs-btn-border-color: var(--sn-brand);
+    --bs-btn-color: var(--sn-on-brand);
+    --bs-btn-hover-bg: var(--sn-brand-hover);
+    --bs-btn-hover-border-color: var(--sn-brand-hover);
+    --bs-btn-hover-color: var(--sn-on-brand);
+    --bs-btn-active-bg: var(--sn-brand-active);
+    --bs-btn-active-border-color: var(--sn-brand-active);
+    --bs-btn-active-color: var(--sn-on-brand);
+    --bs-btn-disabled-bg: var(--sn-brand);
+    --bs-btn-disabled-border-color: var(--sn-brand);
+    --bs-btn-disabled-color: var(--sn-on-brand);
+}
+
+.btn {
+    font-weight: 500;
+    border-radius: var(--sn-radius-sm);
+}
+
+.btn-sm {
+    font-size: .8rem;
+}
+
+/* Amber accent CTA (booking confirmation). Amber needs near-black text — white on
+   #f59e0b is about 2:1 and fails contrast. */
+.btn-accent {
+    --bs-btn-bg: var(--sn-accent);
+    --bs-btn-border-color: var(--sn-accent);
+    --bs-btn-color: #1f1600;
+    --bs-btn-hover-bg: #e08e08;
+    --bs-btn-hover-border-color: #e08e08;
+    --bs-btn-hover-color: #1f1600;
+    --bs-btn-active-bg: #c97d06;
+    --bs-btn-active-border-color: #c97d06;
+    --bs-btn-active-color: #1f1600;
+    --bs-btn-disabled-bg: var(--sn-accent);
+    --bs-btn-disabled-border-color: var(--sn-accent);
+    --bs-btn-disabled-color: #1f1600;
+}
+
+/* In dark mode the accent is the teal, so the ink flips to the canvas colour. */
+[data-bs-theme="dark"] .btn-accent {
+    --bs-btn-color: var(--sn-on-brand);
+    --bs-btn-hover-bg: var(--sn-brand-hover);
+    --bs-btn-hover-border-color: var(--sn-brand-hover);
+    --bs-btn-hover-color: var(--sn-on-brand);
+    --bs-btn-active-bg: var(--sn-brand-active);
+    --bs-btn-active-border-color: var(--sn-brand-active);
+    --bs-btn-active-color: var(--sn-on-brand);
+    --bs-btn-disabled-color: var(--sn-on-brand);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--sn-brand);
+    --bs-btn-border-color: var(--sn-brand);
+    --bs-btn-hover-bg: var(--sn-brand);
+    --bs-btn-hover-border-color: var(--sn-brand);
+    --bs-btn-hover-color: var(--sn-on-brand);
+    --bs-btn-active-bg: var(--sn-brand-active);
+    --bs-btn-active-border-color: var(--sn-brand-active);
+}
+
+/* ------------------------------------------------- forms / overlays ---- */
+
+.form-control,
+.form-select {
+    border-radius: var(--sn-radius-sm);
+    border-color: var(--sn-border);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--sn-brand);
+    box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .15);
+}
+
+.form-label {
+    font-size: .85rem;
+    font-weight: 500;
+    margin-bottom: .3rem;
+}
+
+.modal-content {
+    --bs-modal-bg: var(--sn-surface);
+    --bs-modal-border-color: var(--sn-border);
+    border-radius: var(--sn-radius);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--sn-border);
+}
+
+.dropdown-menu {
+    --bs-dropdown-bg: var(--sn-surface);
+    --bs-dropdown-border-color: var(--sn-border);
+    border-radius: var(--sn-radius);
+    box-shadow: var(--sn-shadow);
+}
+
+.alert {
+    border-radius: var(--sn-radius-sm);
+}
+
+.badge {
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+
+/* ------------------------------------------------------------ landing ---- */
+
+/* Public hotel site at "/". Reads from the same tokens as the app, so the theme
+   toggle recolours it too.
+
+   Responsiveness here is mostly breakpoint-free: the card grids use
+   `auto-fit` + `minmax`, so they reflow continuously at any width or aspect
+   ratio instead of snapping at fixed sizes. Display type uses clamp(), so it
+   scales with the viewport rather than jumping. Only a few genuine edge cases
+   (narrow phones, short landscape screens) need media queries. */
+
+.site {
+    /* Contain the decorative hero glow. */
+    overflow-x: hidden;
+}
+
+/* Stop the sticky header from covering a section heading when an anchor link
+   jumps to it. */
+.site section[id] {
+    scroll-margin-top: 5rem;
+}
+
+/* ------------------------------------------------------- landing header -- */
+
+.site-header {
+    background: var(--sn-surface);
+    border-bottom: 1px solid var(--sn-border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.site-header .nav-anchors {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.site-header .nav-anchors a {
+    color: var(--sn-text-muted);
+    text-decoration: none;
+    font-size: .92rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.site-header .nav-anchors a:hover {
+    color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .site-header .nav-anchors a:hover {
+    color: var(--sn-accent);
+}
+
+/* The anchor links are the first thing to go when width runs out — the Book
+   button and theme toggle matter more. */
+@media (max-width: 991.98px) {
+    .site-header .nav-anchors {
+        display: none;
+    }
+}
+
+/* --------------------------------------------------------------- hero ---- */
+
+.hero {
+    position: relative;
+    background:
+        radial-gradient(90rem 40rem at 75% -10%, rgba(var(--bs-primary-rgb), .18), transparent 60%),
+        var(--sn-surface-2);
+    border-bottom: 1px solid var(--sn-border);
+    /* Tall enough to feel like a hotel hero, never so tall it pushes the content
+       off a laptop or a phone in landscape. */
+    min-height: min(76vh, 640px);
+    display: flex;
+    align-items: center;
+    padding: clamp(2.5rem, 7vw, 6rem) 0;
+}
+
+.hero h1 {
+    /* 2rem on a small phone up to 4rem on a desktop, fluid in between. */
+    font-size: clamp(2rem, 5.5vw, 4rem);
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    max-width: 20ch;
+    margin-bottom: 1.25rem;
+}
+
+.hero .hero-sub {
+    color: var(--sn-text-muted);
+    font-size: clamp(1rem, 1.5vw, 1.2rem);
+    max-width: 46ch;
+    margin-bottom: 2rem;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+/* Check-in / check-out / front desk strip under the hero copy. */
+.hero-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(1.25rem, 4vw, 3rem);
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--sn-border);
+}
+
+.hero-facts div {
+    min-width: 7rem;
+}
+
+.hero-facts dt {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--sn-text-muted);
+    font-weight: 600;
+    margin-bottom: .15rem;
+}
+
+.hero-facts dd {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+/* Short landscape screens (phones turned sideways, some tablets): a 76vh hero
+   would fill the whole screen with nothing but a headline. */
+@media (max-height: 560px) and (orientation: landscape) {
+    .hero {
+        min-height: 0;
+        padding: 2.5rem 0;
+    }
+
+    .hero h1 {
+        font-size: clamp(1.6rem, 4vw, 2.25rem);
+    }
+
+    .hero-facts {
+        margin-top: 1.5rem;
+    }
+}
+
+/* ------------------------------------------------------------ sections --- */
+
+.section {
+    padding: clamp(3rem, 7vw, 5.5rem) 0;
+}
+
+.section-head {
+    max-width: 46ch;
+    margin-bottom: clamp(1.75rem, 4vw, 3rem);
+}
+
+.section-head.center {
+    margin-inline: auto;
+    text-align: center;
+}
+
+.section-label {
+    display: block;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--sn-accent);
+    margin-bottom: .6rem;
+}
+
+.section-head h2 {
+    font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: .6rem;
+}
+
+.section-head p {
+    color: var(--sn-text-muted);
+    margin: 0;
+}
+
+.section-alt {
+    background: var(--sn-surface-2);
+    border-block: 1px solid var(--sn-border);
+}
+
+/* ---------------------------------------------------------------- grid ---- */
+
+/* One breakpoint-free grid, reused by rooms, dining and facilities. The min
+   track width differs per section, so each sets its own --min. */
+.auto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--min, 17rem), 100%), 1fr));
+    gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* --------------------------------------------------------------- rooms ---- */
+
+.room-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    overflow: hidden;
+}
+
+/* Stands in for room photography. Swap for an <img> when real assets exist. */
+.room-photo {
+    aspect-ratio: 3 / 2;
+    background:
+        linear-gradient(135deg, rgba(var(--bs-primary-rgb), .85), rgba(var(--bs-primary-rgb), .45)),
+        var(--sn-surface-2);
+    display: flex;
+    align-items: flex-end;
+    padding: 1rem;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    font-size: 1.15rem;
+}
+
+.room-body {
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: .75rem;
+}
+
+.room-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem .9rem;
+    color: var(--sn-text-muted);
+    font-size: .85rem;
+}
+
+.room-amenities {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+}
+
+.room-amenities li {
+    font-size: .78rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: var(--sn-surface-2);
+    border: 1px solid var(--sn-border);
+    color: var(--sn-text-muted);
+}
+
+.room-rate {
+    /* Pushes the rate + button to the bottom, so cards of differing text length
+       still line up. */
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-top: .5rem;
+}
+
+.room-rate .amount {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+
+.room-rate .per {
+    color: var(--sn-text-muted);
+    font-size: .8rem;
+}
+
+/* -------------------------------------------------------------- dining ---- */
+
+.dining-card {
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: 1.35rem;
+    height: 100%;
+}
+
+.dining-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: .2rem;
+}
+
+.dining-card .kind {
+    display: block;
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--sn-accent);
+    font-weight: 700;
+    margin-bottom: .6rem;
+}
+
+.dining-card p {
+    color: var(--sn-text-muted);
+    font-size: .9rem;
+    margin-bottom: .75rem;
+}
+
+.dining-card .hours {
+    font-size: .82rem;
+    color: var(--sn-text-muted);
+    border-top: 1px solid var(--sn-border);
+    padding-top: .6rem;
+    margin: 0;
+}
+
+/* ---------------------------------------------------------- facilities ---- */
+
+.facility {
+    display: flex;
+    gap: .85rem;
+    align-items: flex-start;
+}
+
+.facility-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--sn-radius-sm);
+    background: rgba(var(--bs-primary-rgb), .12);
+    color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .facility-icon {
+    color: #a9c4e6;
+}
+
+.facility h3 {
+    font-size: .98rem;
+    font-weight: 600;
+    margin-bottom: .2rem;
+}
+
+.facility p {
+    color: var(--sn-text-muted);
+    font-size: .86rem;
+    margin: 0;
+}
+
+/* ------------------------------------------------------------- contact ---- */
+
+.contact-card {
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    height: 100%;
+}
+
+.contact-card dt {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--sn-text-muted);
+    font-weight: 700;
+    margin-bottom: .2rem;
+}
+
+.contact-card dd {
+    margin: 0 0 1.1rem;
+    line-height: 1.5;
+}
+
+.contact-card dd:last-child {
+    margin-bottom: 0;
+}
+
+/* ----------------------------------------------------------- closing cta -- */
+
+.closing-cta {
+    background:
+        radial-gradient(60rem 30rem at 50% 120%, rgba(var(--bs-primary-rgb), .22), transparent 65%),
+        var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 3rem);
+    text-align: center;
+}
+
+.closing-cta h2 {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: .6rem;
+}
+
+.closing-cta p {
+    color: var(--sn-text-muted);
+    max-width: 44ch;
+    margin: 0 auto 1.75rem;
+}
+
+/* -------------------------------------------------------------- footer ---- */
+
+.site-footer {
+    border-top: 1px solid var(--sn-border);
+    padding: clamp(1.5rem, 4vw, 2.5rem) 0;
+    color: var(--sn-text-muted);
+    font-size: .875rem;
+}
+
+.site-footer a {
+    color: var(--sn-text-muted);
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    color: var(--sn-brand);
+}
+
+/* Users who prefer reduced motion get no hover lift or scroll smoothing. */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* -------------------------------------------------------------- login ---- */
+
+.login-bg {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--sn-sidebar-bg), var(--sn-brand));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+/* --------------------------------------------------------- housekeeping -- */
+
 .kanban-col {
-    background: #fff;
-    border-radius: 10px;
-    padding: 10px;
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: 12px;
     min-height: 200px;
 }
 
 .task-card {
-    background: #f8f9fa;
-    border-left: 4px solid var(--sn-primary);
-    border-radius: 6px;
-    padding: 10px;
+    background: var(--sn-surface-2);
+    border: 1px solid var(--sn-border);
+    border-left: 3px solid var(--sn-brand);
+    border-radius: var(--sn-radius-sm);
+    padding: 10px 12px;
     margin-bottom: 8px;
 }
 
-.table thead th {
-    background: #f1f4f8;
-    color: #475569;
-    font-size: .8rem;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-
+/* Room-status badges: fixed hues, since they encode meaning rather than brand.
+   The dark variants are lifted so they stay legible on the dark canvas. */
 .badge-room-AVAILABLE {
     background: #16a34a;
 }
@@ -112,7 +888,7 @@ body {
 
 .badge-room-CLEANING {
     background: #f59e0b;
-    color: #000;
+    color: #1a1a1a;
 }
 
 .badge-room-MAINTENANCE {
@@ -121,4 +897,29 @@ body {
 
 .badge-room-BLOCKED {
     background: #475569;
+}
+
+[data-bs-theme="dark"] .badge-room-AVAILABLE {
+    background: #22c55e;
+    color: #05200f;
+}
+
+[data-bs-theme="dark"] .badge-room-OCCUPIED {
+    background: #ef4444;
+    color: #2a0606;
+}
+
+[data-bs-theme="dark"] .badge-room-CLEANING {
+    background: #fbbf24;
+    color: #2a1c00;
+}
+
+[data-bs-theme="dark"] .badge-room-MAINTENANCE {
+    background: #a78bfa;
+    color: #1b0f3d;
+}
+
+[data-bs-theme="dark"] .badge-room-BLOCKED {
+    background: #94a3b8;
+    color: #131b26;
 }

@@ -40,7 +40,7 @@ export default function RoomListPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Rooms</h4>
-        <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => setShowModal(true)}>+ Add Room</Button>
+        <Button onClick={() => setShowModal(true)}>+ Add Room</Button>
       </div>
       <div className="d-flex gap-2 mb-3">
         <Form.Select style={{ maxWidth: 200 }} value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}>

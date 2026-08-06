@@ -68,7 +68,7 @@ export default function GuestProfileFormModal({ show, guest, onClose, onSaved })
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>{saving ? 'Saving…' : 'Save'}</Button>
+          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
         </Modal.Footer>
       </Form>
     </Modal>

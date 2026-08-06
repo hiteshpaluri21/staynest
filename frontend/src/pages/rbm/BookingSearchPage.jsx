@@ -110,7 +110,7 @@ export default function BookingSearchPage() {
               <Col md={3}><Form.Group><Form.Label>Check-Out</Form.Label><Form.Control type="date" min={addDays(form.checkIn, 1)} required value={form.checkOut} onChange={e => set('checkOut', e.target.value)} /></Form.Group></Col>
               <Col md={2}><Form.Group><Form.Label>Adults</Form.Label><Form.Control type="number" min="1" value={form.adults} onChange={e => set('adults', e.target.value)} /></Form.Group></Col>
               <Col md={2}><Form.Group><Form.Label>Children</Form.Label><Form.Control type="number" min="0" value={form.children} onChange={e => set('children', e.target.value)} /></Form.Group></Col>
-              <Col md={2} className="d-flex align-items-end"><Button type="submit" className="w-100" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Search</Button></Col>
+              <Col md={2} className="d-flex align-items-end"><Button type="submit" className="w-100">Search</Button></Col>
             </Row>
           </Form>
         </Card.Body>

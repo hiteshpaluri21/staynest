@@ -109,7 +109,7 @@ export default function FBOrderPage() {
       <Row>
         <Col md={5}>
           <Card className="shadow-sm mb-3">
-            <Card.Header className="bg-white"><strong>New Order</strong></Card.Header>
+            <Card.Header><strong>New Order</strong></Card.Header>
             <Card.Body>
               {submitErr && <Alert variant="danger" className="py-2">{submitErr}</Alert>}
               {!loading && activeStays.length === 0 && (
@@ -157,14 +157,14 @@ export default function FBOrderPage() {
                 <div className="d-flex justify-content-between mt-2">
                   <strong>Total</strong><strong className="text-primary">₹{total}</strong>
                 </div>
-                <Button type="submit" className="w-100 mt-2" disabled={activeStays.length === 0} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Place Order</Button>
+                <Button type="submit" className="w-100 mt-2" disabled={activeStays.length === 0}>Place Order</Button>
               </Form>
             </Card.Body>
           </Card>
         </Col>
         <Col md={7}>
           <Card className="shadow-sm">
-            <Card.Header className="bg-white"><strong>Active Orders</strong></Card.Header>
+            <Card.Header><strong>Active Orders</strong></Card.Header>
             <Card.Body>
               {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
               {loading ? <Loader /> : orders.length === 0 ? <EmptyState /> :

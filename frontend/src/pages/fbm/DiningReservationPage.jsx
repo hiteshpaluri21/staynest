@@ -94,7 +94,7 @@ export default function DiningReservationPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">{isGuest ? 'My Dining Reservations' : 'Dining Reservations'}</h4>
         {isGuest && (
-          <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => { setSaveErr(''); setShow(true) }}>+ New Reservation</Button>
+          <Button onClick={() => { setSaveErr(''); setShow(true) }}>+ New Reservation</Button>
         )}
       </div>
       {!isGuest && (
@@ -162,7 +162,7 @@ export default function DiningReservationPage() {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShow(false)}>Cancel</Button>
-            <Button type="submit" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Reserve</Button>
+            <Button type="submit">Reserve</Button>
           </Modal.Footer>
         </Form>
       </Modal>

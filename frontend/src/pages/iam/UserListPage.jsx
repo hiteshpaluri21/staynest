@@ -48,7 +48,7 @@ export default function UserListPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">User Management</h4>
-        <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={() => setShowModal(true)}>
+        <Button onClick={() => setShowModal(true)}>
           <FaUserPlus className="me-2" /> Add User
         </Button>
       </div>

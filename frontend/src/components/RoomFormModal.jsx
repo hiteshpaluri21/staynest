@@ -53,7 +53,7 @@ export default function RoomFormModal({ show, onClose, onSaved }) {
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>
+          <Button type="submit" disabled={saving}>
             {saving ? 'Saving…' : 'Create'}
           </Button>
         </Modal.Footer>

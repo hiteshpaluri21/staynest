@@ -90,7 +90,7 @@ export default function MaintenancePage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">{isGuest ? 'My Maintenance Requests' : 'Maintenance Requests'}</h4>
         {canReport && (
-          <Button style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }} onClick={openReport}>+ Report Issue</Button>
+          <Button onClick={openReport}>+ Report Issue</Button>
         )}
       </div>
 
@@ -155,7 +155,7 @@ export default function MaintenancePage() {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShow(false)}>Cancel</Button>
-            <Button type="submit" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Report</Button>
+            <Button type="submit">Report</Button>
           </Modal.Footer>
         </Form>
       </Modal>

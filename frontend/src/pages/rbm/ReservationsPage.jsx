@@ -99,7 +99,7 @@ export default function ReservationsPage() {
                 <td>{r.checkOutDate}</td>
                 <td>{r.nights}</td>
                 <td>{r.adults}A {r.children}C</td>
-                <td><Badge bg="light" text="dark">{r.bookingChannel}</Badge></td>
+                <td><Badge bg="secondary">{r.bookingChannel}</Badge></td>
                 <td>₹{r.totalAmount}</td>
                 <td><Badge bg={statusBadge(r.status)}>{r.status}</Badge></td>
                 <td>

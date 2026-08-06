@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UserListPage from './pages/iam/UserListPage'
@@ -31,6 +32,9 @@ const withLayout = (roles, el, opts = {}) => (
 export default function App() {
   return (
     <Routes>
+      {/* Public landing page. Stays reachable when signed in, but swaps its CTAs
+          for a link into the app. */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/unauthorized" element={<div className="p-5 text-center"><h3>403 — Unauthorized</h3></div>} />
@@ -63,7 +67,8 @@ export default function App() {
 
       <Route path="/notifications" element={withLayout(['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'ADMIN'], <NotificationsPage />)} />
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Unknown URLs land on the public site, not the sign-in form. */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

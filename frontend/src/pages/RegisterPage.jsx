@@ -88,7 +88,7 @@ export default function RegisterPage() {
     <div className="login-bg py-5">
       <Card style={{ width: 440 }} className="shadow border-0">
         <Card.Body className="p-4">
-          <h3 className="text-center mb-1" style={{ color: '#1e3a5f' }}>StayNest</h3>
+          <h3 className="text-center mb-1 brand-wordmark">StayNest</h3>
           <p className="text-center text-muted small mb-4">Create Guest Account</p>
           
           {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
@@ -180,7 +180,6 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="w-100 py-2 fw-semibold mb-3"
-              style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}
               disabled={loading}
             >
               {loading ? 'Creating Account…' : 'Register & Start Booking'}
@@ -189,9 +188,12 @@ export default function RegisterPage() {
 
           <div className="text-center mt-3">
             <span className="small text-muted">Already have an account? </span>
-            <Link to="/login" className="small fw-bold" style={{ color: '#1e3a5f', textDecoration: 'none' }}>
+            <Link to="/login" className="small fw-bold text-primary text-decoration-none">
               Sign In
             </Link>
+          </div>
+          <div className="text-center mt-2">
+            <Link to="/" className="small text-muted text-decoration-none">← Back to hotel site</Link>
           </div>
         </Card.Body>
       </Card>

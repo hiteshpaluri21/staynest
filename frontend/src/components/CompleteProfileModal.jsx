@@ -100,7 +100,7 @@ export default function CompleteProfileModal({ show, onClose, onCompleted }) {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>
+          <Button type="submit" disabled={saving}>
             {saving ? 'Saving…' : 'Save & Continue'}
           </Button>
         </Modal.Footer>
