@@ -6,6 +6,7 @@ import { getRooms } from '../../services/ric/roomService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
+import ConfirmModal from '../../components/ConfirmModal'
 import { statusBadge } from '../../utils/badges'
 
 export default function MyReservationsPage() {
@@ -16,6 +17,8 @@ export default function MyReservationsPage() {
   const [roomNumbers, setRoomNumbers] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // The reservation awaiting cancel confirmation, or null when the modal is closed.
+  const [pendingCancel, setPendingCancel] = useState(null)
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'FRONTDESK'
 
@@ -44,10 +47,10 @@ export default function MyReservationsPage() {
 
   const stayMap = Object.fromEntries(stays.map(s => [s.reservationId, s]))
 
-  const cancel = async (id) => {
-    if (!window.confirm('Cancel this reservation?')) return
-    try { await cancelReservation(id); load() }
-    catch (e) { alert(e.message) }
+  // Confirmed in-app via ConfirmModal, which shows any failure inline and reloads on success.
+  const confirmCancel = async () => {
+    await cancelReservation(pendingCancel.reservationId)
+    await load()
   }
 
   return (
@@ -97,7 +100,7 @@ export default function MyReservationsPage() {
                   <td><Badge bg={statusBadge(r.status)}>{r.status}</Badge></td>
                   <td>
                     {r.status === 'CONFIRMED' && (
-                      <Button size="sm" variant="outline-danger" onClick={() => cancel(r.reservationId)}>Cancel</Button>
+                      <Button size="sm" variant="outline-danger" onClick={() => setPendingCancel(r)}>Cancel</Button>
                     )}
                   </td>
                 </tr>
@@ -106,6 +109,20 @@ export default function MyReservationsPage() {
           </tbody>
         </Table>
       }
+
+      <ConfirmModal
+        show={pendingCancel != null}
+        title="Cancel reservation"
+        body={pendingCancel && (
+          <p className="mb-0">
+            Cancel booking <strong>{pendingCancel.reservationId}</strong> for{' '}
+            {pendingCancel.checkInDate} → {pendingCancel.checkOutDate}? This cannot be undone.
+          </p>
+        )}
+        confirmLabel="Cancel reservation"
+        onClose={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
+      />
     </div>
   )
 }

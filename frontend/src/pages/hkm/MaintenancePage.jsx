@@ -21,6 +21,8 @@ export default function MaintenancePage() {
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ roomId: '', issueDescription: '', priority: 'MEDIUM' })
   const [saveErr, setSaveErr] = useState('')
+  // Failures from row actions; `error` is not reused, as it replaces the whole table.
+  const [actionErr, setActionErr] = useState('')
   // For guests: the room they are currently checked in to (null until resolved / when not checked in).
   const [activeRoomId, setActiveRoomId] = useState(null)
 
@@ -59,7 +61,8 @@ export default function MaintenancePage() {
   }
 
   const changeStatus = async (id, status) => {
-    try { await updateRequestStatus(id, status); load() } catch (e) { alert(e.message) }
+    setActionErr('')
+    try { await updateRequestStatus(id, status); load() } catch (e) { setActionErr(e.message) }
   }
 
   const openReport = () => {
@@ -95,6 +98,7 @@ export default function MaintenancePage() {
         <Alert variant="info">You need to be checked in to raise a maintenance request.</Alert>
       )}
 
+      {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         items.length === 0 ? <EmptyState message={isGuest ? 'You have no maintenance requests' : 'No maintenance requests'} /> :
         <Table hover responsive className="align-middle">

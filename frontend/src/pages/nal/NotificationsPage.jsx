@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Button, Badge, Form } from 'react-bootstrap'
+import { Card, Table, Button, Badge, Form, Alert } from 'react-bootstrap'
 import { getByUser, markAsRead, markAllAsRead } from '../../services/nal/notificationService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
@@ -12,6 +12,8 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [catFilter, setCatFilter] = useState('')
+  // Failures from mark-as-read; `error` is not reused, as it replaces the whole list.
+  const [actionErr, setActionErr] = useState('')
 
   const load = async () => {
     if (!user?.userId) return
@@ -21,8 +23,8 @@ export default function NotificationsPage() {
   }
   useEffect(() => { load() }, [user])
 
-  const markOne = async (id) => { try { await markAsRead(id); load() } catch (e) { alert(e.message) } }
-  const markAll = async () => { try { await markAllAsRead(user.userId); load() } catch (e) { alert(e.message) } }
+  const markOne = async (id) => { setActionErr(''); try { await markAsRead(id); load() } catch (e) { setActionErr(e.message) } }
+  const markAll = async () => { setActionErr(''); try { await markAllAsRead(user.userId); load() } catch (e) { setActionErr(e.message) } }
 
   const filtered = catFilter ? items.filter(n => n.category === catFilter) : items
   const unread = items.filter(n => n.status === 'UNREAD').length
@@ -39,6 +41,7 @@ export default function NotificationsPage() {
       </Form.Select>
       <Card className="shadow-sm">
         <Card.Body>
+          {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
           {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
             filtered.length === 0 ? <EmptyState message="No notifications" /> :
             <Table hover>

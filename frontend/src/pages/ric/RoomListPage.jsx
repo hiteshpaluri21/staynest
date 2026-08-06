@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Form, Button, Badge } from 'react-bootstrap'
+import { Table, Form, Button, Badge, Alert } from 'react-bootstrap'
 import { getRooms, updateRoomStatus } from '../../services/ric/roomService'
 import { getRoomTypes } from '../../services/ric/roomTypeService'
 import Loader from '../../components/Loader'
@@ -15,6 +15,8 @@ export default function RoomListPage() {
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [filter, setFilter] = useState({ status: '', roomTypeId: '' })
+  // Failures from row actions; `error` is not reused, as it replaces the whole table.
+  const [actionErr, setActionErr] = useState('')
 
   const load = async () => {
     setLoading(true); setError('')
@@ -30,7 +32,8 @@ export default function RoomListPage() {
   const shownRooms = rooms.filter(r => !filter.roomTypeId || String(r.roomTypeId) === String(filter.roomTypeId))
 
   const changeStatus = async (room, status) => {
-    try { await updateRoomStatus(room.roomId, status); load() } catch (e) { alert(e.message) }
+    setActionErr('')
+    try { await updateRoomStatus(room.roomId, status); load() } catch (e) { setActionErr(e.message) }
   }
 
   return (
@@ -49,6 +52,7 @@ export default function RoomListPage() {
           {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name} — {t.amenitiesList || 'no amenities'}</option>)}
         </Form.Select>
       </div>
+      {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         shownRooms.length === 0 ? <EmptyState /> :
           <Table hover responsive>

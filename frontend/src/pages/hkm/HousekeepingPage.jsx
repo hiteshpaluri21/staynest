@@ -33,6 +33,8 @@ export default function HousekeepingPage() {
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ roomId: '', taskType: 'STAYOVERSERVICE', assignedToId: '' })
   const [saveErr, setSaveErr] = useState('')
+  // Failures from board actions; `error` is not reused, as it replaces the whole board.
+  const [actionErr, setActionErr] = useState('')
 
   const load = async () => {
     setLoading(true); setError('')
@@ -49,13 +51,15 @@ export default function HousekeepingPage() {
   useEffect(() => { load() }, [])
 
   const move = async (task, status) => {
+    setActionErr('')
     try { await updateTaskStatus(task.taskId, status); load() }
-    catch (e) { alert(e.message) }
+    catch (e) { setActionErr(e.message) }
   }
 
   const assign = async (task, staffId) => {
+    setActionErr('')
     try { await assignTask(task.taskId, Number(staffId)); load() }
-    catch (e) { alert(e.message) }
+    catch (e) { setActionErr(e.message) }
   }
 
   const openCreate = () => {
@@ -108,6 +112,7 @@ export default function HousekeepingPage() {
         <h4 className="mb-0">Housekeeping Task Board</h4>
         {canManageTasks && <Button variant="outline-success" size="sm" onClick={openCreate}>+ Quick Task</Button>}
       </div>
+      {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         <Row>
           {COLUMNS.map(col => (

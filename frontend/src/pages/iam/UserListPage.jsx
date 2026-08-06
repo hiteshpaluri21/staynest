@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Badge, Form, InputGroup, Card } from 'react-bootstrap'
+import { Table, Button, Badge, Form, InputGroup, Card, Alert } from 'react-bootstrap'
 import { FaSearch, FaUserPlus } from 'react-icons/fa'
 import { getUsers, createUser, updateUserStatus } from '../../services/iam/userService'
 import Loader from '../../components/Loader'
@@ -15,6 +15,8 @@ export default function UserListPage() {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
+  // Failures from row actions; `error` is not reused, as it replaces the whole table.
+  const [actionErr, setActionErr] = useState('')
 
   const load = async () => {
     setLoading(true);
@@ -27,12 +29,13 @@ export default function UserListPage() {
 
   const toggleStatus = async (u) => {
     const next = u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+    setActionErr('')
     if (next === 'INACTIVE' && u.userId === currentUser?.userId) {
-      alert('You cannot deactivate your own account')
+      setActionErr('You cannot deactivate your own account.')
       return
     }
     try { await updateUserStatus(u.userId, next); load() }
-    catch (e) { alert(e.message) }
+    catch (e) { setActionErr(e.message) }
   }
 
   const filtered = users.filter(u =>
@@ -57,6 +60,7 @@ export default function UserListPage() {
             <Form.Control placeholder="Search by name or email" value={query} onChange={e => setQuery(e.target.value)} />
           </InputGroup>
 
+          {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
           {loading ? <Loader /> :
             error ? <div className="alert alert-danger">{error}</div> :
               filtered.length === 0 ? <EmptyState /> :

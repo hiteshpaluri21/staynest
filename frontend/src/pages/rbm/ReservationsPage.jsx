@@ -3,6 +3,7 @@ import { Table, Button, Badge, Form, InputGroup, Row, Col, Card } from 'react-bo
 import { getReservations, cancelReservation } from '../../services/rbm/reservationService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
+import ConfirmModal from '../../components/ConfirmModal'
 import { statusBadge } from '../../utils/badges'
 
 const STATUSES = ['ALL', 'CONFIRMED', 'CHECKEDIN', 'CHECKEDOUT', 'CANCELLED', 'NOSHOW']
@@ -13,6 +14,8 @@ export default function ReservationsPage() {
   const [error, setError] = useState('')
   const [status, setStatus] = useState('ALL')
   const [query, setQuery] = useState('')
+  // The reservation awaiting cancel confirmation, or null when the modal is closed.
+  const [pendingCancel, setPendingCancel] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -33,10 +36,10 @@ export default function ReservationsPage() {
     )
   }, [items, query])
 
-  const cancel = async (id) => {
-    if (!window.confirm('Cancel this reservation?')) return
-    try { await cancelReservation(id); load() }
-    catch (e) { alert(e.message) }
+  // Confirmed in-app via ConfirmModal, which shows any failure inline and reloads on success.
+  const confirmCancel = async () => {
+    await cancelReservation(pendingCancel.reservationId)
+    await load()
   }
 
   return (
@@ -101,7 +104,7 @@ export default function ReservationsPage() {
                 <td><Badge bg={statusBadge(r.status)}>{r.status}</Badge></td>
                 <td>
                   {r.status === 'CONFIRMED' && (
-                    <Button size="sm" variant="outline-danger" onClick={() => cancel(r.reservationId)}>Cancel</Button>
+                    <Button size="sm" variant="outline-danger" onClick={() => setPendingCancel(r)}>Cancel</Button>
                   )}
                 </td>
               </tr>
@@ -109,6 +112,21 @@ export default function ReservationsPage() {
           </tbody>
         </Table>
       }
+
+      <ConfirmModal
+        show={pendingCancel != null}
+        title="Cancel reservation"
+        body={pendingCancel && (
+          <p className="mb-0">
+            Cancel booking <strong>{pendingCancel.reservationId}</strong> for{' '}
+            {pendingCancel.guestName || `Guest #${pendingCancel.guestId}`} ({pendingCancel.checkInDate} →{' '}
+            {pendingCancel.checkOutDate})? This cannot be undone.
+          </p>
+        )}
+        confirmLabel="Cancel reservation"
+        onClose={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
+      />
     </div>
   )
 }

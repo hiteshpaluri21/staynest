@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Form, Button, Badge } from 'react-bootstrap'
+import { Table, Form, Button, Badge, Alert } from 'react-bootstrap'
 import { getRatePlans, updateRatePlanStatus } from '../../services/ric/ratePlanService'
 import { getRoomTypes } from '../../services/ric/roomTypeService'
 import Loader from '../../components/Loader'
@@ -17,6 +17,8 @@ export default function RatePlanPage() {
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [filterType, setFilterType] = useState('')
+  // Failures from row actions; `error` is not reused, as it replaces the whole table.
+  const [actionErr, setActionErr] = useState('')
 
   const load = async () => {
     setLoading(true); setError('')
@@ -32,7 +34,8 @@ export default function RatePlanPage() {
 
   const toggle = async (p) => {
     const next = p.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
-    try { await updateRatePlanStatus(p.ratePlanId, next); load() } catch (e) { alert(e.message) }
+    setActionErr('')
+    try { await updateRatePlanStatus(p.ratePlanId, next); load() } catch (e) { setActionErr(e.message) }
   }
 
   return (
@@ -45,6 +48,7 @@ export default function RatePlanPage() {
         <option value="">All Room Types</option>
         {types.map(t => <option key={t.roomTypeId} value={t.roomTypeId}>{t.name}</option>)}
       </Form.Select>
+      {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         shownPlans.length === 0 ? <EmptyState /> :
         <Table hover responsive>

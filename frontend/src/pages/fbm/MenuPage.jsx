@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Row, Col, Button, Badge, Form } from 'react-bootstrap'
+import { Card, Row, Col, Button, Badge, Form, Alert } from 'react-bootstrap'
 import { getMenuItems, updateAvailability } from '../../services/fbm/menuService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
@@ -17,6 +17,8 @@ export default function MenuPage() {
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [catFilter, setCatFilter] = useState('')
+  // Failures from row actions; `error` is not reused, as it replaces the whole grid.
+  const [actionErr, setActionErr] = useState('')
 
   const load = async () => {
     setLoading(true); setError('')
@@ -26,8 +28,9 @@ export default function MenuPage() {
   useEffect(() => { load() }, [catFilter])
 
   const toggle = async (item) => {
+    setActionErr('')
     try { await updateAvailability(item.menuItemId, !item.isAvailable); load() }
-    catch (e) { alert(e.message) }
+    catch (e) { setActionErr(e.message) }
   }
 
   return (
@@ -40,6 +43,7 @@ export default function MenuPage() {
         <option value="">All Categories</option>
         {CATEGORIES.map(c => <option key={c}>{c}</option>)}
       </Form.Select>
+      {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         items.length === 0 ? <EmptyState message="No menu items" /> :
         <Row>
