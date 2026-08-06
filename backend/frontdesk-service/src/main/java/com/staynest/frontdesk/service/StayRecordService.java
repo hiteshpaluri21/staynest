@@ -10,7 +10,12 @@ import java.util.List;
 public interface StayRecordService {
     StayRecordResponse checkIn(CheckInRequest request);
     StayRecordResponse postFolioItem(Integer stayId, FolioItemRequest request);
-    StayRecordResponse checkOut(Integer stayId);
+    /**
+     * @param housekeepingStaffId the housekeeping staff member the post-checkout cleaning task is
+     *                            assigned to; when null no task is raised, since tasks may not be
+     *                            left unassigned.
+     */
+    StayRecordResponse checkOut(Integer stayId, Integer housekeepingStaffId);
     StayRecordResponse getStayById(Integer stayId);
     List<StayRecordResponse> getAllStays();
     List<StayRecordResponse> getStaysByGuestId(Integer guestId);

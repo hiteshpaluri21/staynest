@@ -1,7 +1,8 @@
 package com.staynest.fb.serviceimpl;
 
+import com.staynest.fb.client.FeignErrors;
 import com.staynest.fb.client.FrontDeskServiceClient;
-import com.staynest.fb.client.IamServiceClient;
+import com.staynest.fb.client.ReservationServiceClient;
 import com.staynest.fb.dto.DiningReservationRequest;
 import com.staynest.fb.dto.DiningReservationResponse;
 import com.staynest.fb.entity.DiningReservation;
@@ -10,7 +11,6 @@ import com.staynest.fb.exception.BadRequestException;
 import com.staynest.fb.exception.ResourceNotFoundException;
 import com.staynest.fb.repository.DiningReservationRepository;
 import com.staynest.fb.service.DiningReservationService;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class DiningReservationServiceImpl implements DiningReservationService {
 
     private final DiningReservationRepository reservationRepository;
-    private final IamServiceClient iamServiceClient;
+    private final ReservationServiceClient reservationServiceClient;
     private final FrontDeskServiceClient frontDeskServiceClient;
 
     @Override
@@ -95,18 +95,19 @@ public class DiningReservationServiceImpl implements DiningReservationService {
             throw new BadRequestException("Guest ID is required");
         }
         try {
-            var resp = iamServiceClient.getUserById(guestId);
+            var resp = reservationServiceClient.getGuestById(guestId);
             if (resp == null || resp.getData() == null) {
                 throw new BadRequestException("Invalid Guest ID: " + guestId + " (no such guest)");
             }
-        } catch (FeignException.NotFound e) {
-            throw new BadRequestException("Invalid Guest ID: " + guestId + " (no such guest)");
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            log.error("iam-service call failed while validating Guest ID {}", guestId, e);
+            if (FeignErrors.isNotFound(e)) {
+                throw new BadRequestException("Invalid Guest ID: " + guestId + " (no such guest)");
+            }
+            log.error("reservation-service call failed while validating Guest ID {}", guestId, e);
             throw new BadRequestException("Unable to validate Guest ID " + guestId
-                    + " (iam-service error: " + e.getMessage() + ")");
+                    + " (reservation-service error: " + e.getMessage() + ")");
         }
     }
 
@@ -116,11 +117,12 @@ public class DiningReservationServiceImpl implements DiningReservationService {
             if (resp == null || resp.getData() == null) {
                 throw new BadRequestException("Invalid Stay ID: " + stayId + " (no such stay)");
             }
-        } catch (FeignException.NotFound e) {
-            throw new BadRequestException("Invalid Stay ID: " + stayId + " (no such stay)");
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
+            if (FeignErrors.isNotFound(e)) {
+                throw new BadRequestException("Invalid Stay ID: " + stayId + " (no such stay)");
+            }
             log.error("frontdesk-service call failed while validating Stay ID {}", stayId, e);
             throw new BadRequestException("Unable to validate Stay ID " + stayId
                     + " (frontdesk-service error: " + e.getMessage() + ")");

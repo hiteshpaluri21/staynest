@@ -20,7 +20,7 @@ const ALL_LINKS = [
   { to: '/maintenance', label: 'Maintenance', icon: <FaTools />, roles: ['HOUSEKEEPING', 'ADMIN', 'GUEST'] },
   { to: '/menu', label: 'Menu', icon: <FaUtensils />, roles: ['FBMANAGER', 'ADMIN', 'GUEST'] },
   { to: '/orders', label: 'F&B Orders', icon: <FaClipboardList />, roles: ['FBMANAGER', 'ADMIN'] },
-  { to: '/dining-reservations', label: 'Dining Reservations', icon: <FaClipboardCheck />, roles: ['FBMANAGER', 'ADMIN'] },
+  { to: '/dining-reservations', label: 'Dining Reservations', icon: <FaClipboardCheck />, roles: ['FBMANAGER', 'ADMIN', 'GUEST'] },
   { to: '/notifications', label: 'Notifications', icon: <FaBell />, roles: ['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'ADMIN'] },
 ]
 

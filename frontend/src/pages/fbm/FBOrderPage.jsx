@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Table, Button, Badge, Form, Row, Col, Card, Alert } from 'react-bootstrap'
 import { getOrders, placeOrder, updateOrderStatus, cancelOrder } from '../../services/fbm/orderService'
 import { getMenuItems } from '../../services/fbm/menuService'
+import { getStays } from '../../services/fds/stayService'
+import { getRooms } from '../../services/ric/roomService'
+import { getGuestById } from '../../services/rbm/guestService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
@@ -14,17 +17,39 @@ export default function FBOrderPage() {
   const { user } = useAuth()
   const [orders, setOrders] = useState([])
   const [menu, setMenu] = useState([])
+  // Only stays that are still open can be charged, so the picker is built from those.
+  const [activeStays, setActiveStays] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ stayId: '', tableNumber: '', orderType: 'DINEIN', cart: {} })
+  const [form, setForm] = useState({ stayId: '', orderType: 'DINEIN', cart: {} })
   const [menuCat, setMenuCat] = useState('BREAKFAST')
   const [submitErr, setSubmitErr] = useState('')
 
   const load = async () => {
     setLoading(true); setError('')
     try {
-      const [os, ms] = await Promise.all([getOrders(), getMenuItems({ available: true })])
+      const [os, ms, stays, rooms] = await Promise.all([
+        getOrders(),
+        getMenuItems({ available: true }),
+        getStays().catch(() => []),
+        getRooms().catch(() => []),
+      ])
       setOrders(os); setMenu(ms)
+
+      const open = (stays || []).filter(s => s.status === 'ACTIVE')
+      const roomNumbers = Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber]))
+      // Guest names make the picker readable; a failed lookup just falls back to the id.
+      const named = await Promise.all(open.map(async s => {
+        const guest = await getGuestById(s.guestId).catch(() => null)
+        return {
+          ...s,
+          guestName: guest?.name ?? `Guest #${s.guestId}`,
+          roomLabel: roomNumbers[s.assignedRoomId] != null
+            ? `Room ${roomNumbers[s.assignedRoomId]}`
+            : `Room #${s.assignedRoomId}`,
+        }
+      }))
+      setActiveStays(named)
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
@@ -41,18 +66,23 @@ export default function FBOrderPage() {
     return sum + (m ? Number(m.price) * ci.qty : 0)
   }, 0)
 
+  const stayLabels = useMemo(
+    () => Object.fromEntries(activeStays.map(s => [s.stayId, `${s.guestName} — ${s.roomLabel}`])),
+    [activeStays]
+  )
+
   const submit = async (e) => {
     e.preventDefault(); setSubmitErr('')
+    if (!form.stayId) { setSubmitErr('Select the stay this order is for'); return }
     if (cartItems.length === 0) { setSubmitErr('Select at least one item'); return }
     try {
       await placeOrder({
         stayId: Number(form.stayId),
-        tableNumber: form.tableNumber,
         orderType: form.orderType,
         itemsJson: JSON.stringify(cartItems),
         placedBy: user?.userId,
       })
-      setForm({ stayId: '', tableNumber: '', orderType: 'DINEIN', cart: {} })
+      setForm({ stayId: '', orderType: 'DINEIN', cart: {} })
       load()
     } catch (err) { setSubmitErr(err.message) }
   }
@@ -69,11 +99,23 @@ export default function FBOrderPage() {
             <Card.Header className="bg-white"><strong>New Order</strong></Card.Header>
             <Card.Body>
               {submitErr && <Alert variant="danger" className="py-2">{submitErr}</Alert>}
+              {!loading && activeStays.length === 0 && (
+                <Alert variant="info" className="py-2">
+                  No guests are checked in, so there is no stay to charge an order to.
+                </Alert>
+              )}
               <Form onSubmit={submit}>
-                <Row>
-                  <Col md={6}><Form.Group className="mb-2"><Form.Label className="small">Stay ID</Form.Label><Form.Control type="number" required value={form.stayId} onChange={e => setForm(f => ({ ...f, stayId: e.target.value }))} /></Form.Group></Col>
-                  <Col md={6}><Form.Group className="mb-2"><Form.Label>Table No</Form.Label><Form.Control value={form.tableNumber} onChange={e => setForm(f => ({ ...f, tableNumber: e.target.value }))} /></Form.Group></Col>
-                </Row>
+                <Form.Group className="mb-2">
+                  <Form.Label>Guest / Stay</Form.Label>
+                  <Form.Select required value={form.stayId} onChange={e => setForm(f => ({ ...f, stayId: e.target.value }))}>
+                    <option value="">Select a checked-in guest…</option>
+                    {activeStays.map(s => (
+                      <option key={s.stayId} value={s.stayId}>
+                        {s.guestName} — {s.roomLabel} (Stay #{s.stayId})
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
                 <Form.Group className="mb-3"><Form.Label>Order Type</Form.Label>
                   <Form.Select value={form.orderType} onChange={e => setForm(f => ({ ...f, orderType: e.target.value }))}>
                     <option value="DINEIN">Dine-In</option>
@@ -102,7 +144,7 @@ export default function FBOrderPage() {
                 <div className="d-flex justify-content-between mt-2">
                   <strong>Total</strong><strong className="text-primary">₹{total}</strong>
                 </div>
-                <Button type="submit" className="w-100 mt-2" style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Place Order</Button>
+                <Button type="submit" className="w-100 mt-2" disabled={activeStays.length === 0} style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}>Place Order</Button>
               </Form>
             </Card.Body>
           </Card>
@@ -113,11 +155,12 @@ export default function FBOrderPage() {
             <Card.Body>
               {loading ? <Loader /> : orders.length === 0 ? <EmptyState /> :
                 <Table hover size="sm">
-                  <thead><tr><th>ID</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Guest</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.orderId}>
                         <td>#{o.orderId}</td>
+                        <td className="small">{stayLabels[o.stayId] ?? `Stay #${o.stayId}`}</td>
                         <td><Badge bg="info">{o.orderType}</Badge></td>
                         <td className="small">
                           {o.items && o.items.length

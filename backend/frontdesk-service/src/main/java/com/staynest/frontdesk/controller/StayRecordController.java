@@ -31,8 +31,9 @@ public class StayRecordController {
                 .body(ApiResponse.success("Check-in successful", stayRecordService.checkIn(request)));
     }
 
+    // F&B needs the list of open stays to attach orders and dining reservations to a real stay.
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'GUEST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'FBMANAGER', 'GUEST')")
     public ResponseEntity<ApiResponse<List<StayRecordResponse>>> getAll(
             @RequestParam(required = false) Integer guestId,
             @RequestParam(required = false) String status) {
@@ -75,9 +76,14 @@ public class StayRecordController {
                 folioItemService.updateFolioItem(folioItemId, request)));
     }
 
+    // housekeepingStaffId is who the automatic post-checkout cleaning task goes to — front desk
+    // picks them in the checkout dialog so the task never lands on the board unassigned.
     @PostMapping("/{id}/checkout")
     @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
-    public ResponseEntity<ApiResponse<StayRecordResponse>> checkOut(@PathVariable Integer id) {
-        return ResponseEntity.ok(ApiResponse.success("Check-out successful", stayRecordService.checkOut(id)));
+    public ResponseEntity<ApiResponse<StayRecordResponse>> checkOut(
+            @PathVariable Integer id,
+            @RequestParam(required = false) Integer housekeepingStaffId) {
+        return ResponseEntity.ok(ApiResponse.success("Check-out successful",
+                stayRecordService.checkOut(id, housekeepingStaffId)));
     }
 }

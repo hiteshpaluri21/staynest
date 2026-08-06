@@ -4,6 +4,8 @@ import com.staynest.housekeeping.dto.HousekeepingTaskRequest;
 import com.staynest.housekeeping.dto.HousekeepingTaskResponse;
 import com.staynest.housekeeping.entity.HousekeepingTask;
 import com.staynest.housekeeping.enums.TaskStatus;
+import com.staynest.housekeeping.enums.TaskType;
+import com.staynest.housekeeping.exception.BadRequestException;
 import com.staynest.housekeeping.exception.ResourceNotFoundException;
 import com.staynest.housekeeping.repository.HousekeepingTaskRepository;
 import com.staynest.housekeeping.service.HousekeepingTaskService;
@@ -22,6 +24,15 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
 
     private final HousekeepingTaskRepository taskRepository;
     private final com.staynest.housekeeping.client.NotificationServiceClient notificationServiceClient;
+    private final com.staynest.housekeeping.client.RoomServiceClient roomServiceClient;
+
+    /**
+     * Task types that only make sense while a guest is actually in the room: you cannot clean up
+     * after a departure, service a stayover, or turn down a bed in a room nobody is occupying.
+     * DEEPCLEAN is deliberately absent — that is scheduled maintenance work on any room.
+     */
+    private static final java.util.Set<TaskType> REQUIRES_OCCUPIED_ROOM = java.util.EnumSet.of(
+            TaskType.CHECKOUT, TaskType.STAYOVERSERVICE, TaskType.TURNDOWN);
 
     /** Fire-and-forget notification; a failure here must never fail the primary action. */
     private void notify(Integer userId, String message) {
@@ -36,6 +47,8 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
 
     @Override
     public HousekeepingTaskResponse createTask(HousekeepingTaskRequest request) {
+        validateTaskAppliesToRoom(request.getTaskType(), request.getRoomId());
+
         HousekeepingTask task = HousekeepingTask.builder()
                 .roomId(request.getRoomId())
                 .taskType(request.getTaskType())
@@ -46,6 +59,31 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
         HousekeepingTask saved = taskRepository.save(task);
         log.info("Housekeeping task created: {}", saved.getTaskId());
         return mapToResponse(saved);
+    }
+
+    /**
+     * Rejects occupancy-dependent task types for a room that has no guest in it. A room-service
+     * outage is not treated as a failure: the check is skipped and logged rather than blocking
+     * front desk from raising work.
+     */
+    private void validateTaskAppliesToRoom(TaskType taskType, Integer roomId) {
+        if (!REQUIRES_OCCUPIED_ROOM.contains(taskType) || roomId == null) {
+            return;
+        }
+        String status;
+        try {
+            var resp = roomServiceClient.getRoomById(roomId);
+            Object raw = resp != null && resp.getData() != null ? resp.getData().get("status") : null;
+            status = raw != null ? raw.toString() : null;
+        } catch (Exception e) {
+            log.warn("Could not read room {} status; skipping the occupancy check for {}: {}",
+                    roomId, taskType, e.getMessage());
+            return;
+        }
+        if (status != null && !"OCCUPIED".equalsIgnoreCase(status)) {
+            throw new BadRequestException("A " + taskType + " task needs a guest in the room, but room "
+                    + roomId + " is " + status + ". Use DEEPCLEAN for an unoccupied room.");
+        }
     }
 
     @Override

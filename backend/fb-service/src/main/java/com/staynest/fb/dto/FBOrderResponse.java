@@ -14,7 +14,6 @@ import java.util.List;
 public class FBOrderResponse {
     private Integer orderId;
     private Integer stayId;
-    private String tableNumber;
     private OrderType orderType;
     private String itemsJson;
     private List<FBOrderItemResponse> items;

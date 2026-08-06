@@ -28,9 +28,6 @@ public class FBOrder {
     @Column(name = "StayID", nullable = false)
     private Integer stayId;
 
-    @Column(name = "TableNumber", length = 20)
-    private String tableNumber;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "OrderType", nullable = false)
     private OrderType orderType;

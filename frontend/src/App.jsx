@@ -58,7 +58,8 @@ export default function App() {
 
       <Route path="/menu" element={withLayout(['FBMANAGER', 'ADMIN', 'GUEST'], <MenuPage />)} />
       <Route path="/orders" element={withLayout(['FBMANAGER', 'ADMIN'], <FBOrderPage />)} />
-      <Route path="/dining-reservations" element={withLayout(['FBMANAGER', 'ADMIN'], <DiningReservationPage />)} />
+      {/* Guests book a table here; F&B staff seat and complete what has been booked. */}
+      <Route path="/dining-reservations" element={withLayout(['FBMANAGER', 'ADMIN', 'GUEST'], <DiningReservationPage />)} />
 
       <Route path="/notifications" element={withLayout(['GUEST', 'FRONTDESK', 'HOUSEKEEPING', 'FBMANAGER', 'ADMIN'], <NotificationsPage />)} />
 

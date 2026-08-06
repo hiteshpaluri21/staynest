@@ -13,7 +13,11 @@ const COLUMNS = [
   { key: 'DONE', label: 'Done', color: '#16a34a' },
 ]
 
+// CHECKOUT, STAYOVERSERVICE and TURNDOWN are all work done around a guest, so they only apply to
+// a room someone is actually in. DEEPCLEAN is scheduled work on any room. housekeeping-service
+// enforces the same rule server-side.
 const TASK_TYPES = ['CHECKOUT', 'STAYOVERSERVICE', 'TURNDOWN', 'DEEPCLEAN']
+const OCCUPIED_ONLY_TASK_TYPES = ['CHECKOUT', 'STAYOVERSERVICE', 'TURNDOWN']
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
@@ -27,7 +31,7 @@ export default function HousekeepingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [show, setShow] = useState(false)
-  const [form, setForm] = useState({ roomId: '', taskType: 'STAYOVERSERVICE' })
+  const [form, setForm] = useState({ roomId: '', taskType: 'STAYOVERSERVICE', assignedToId: '' })
   const [saveErr, setSaveErr] = useState('')
 
   const load = async () => {
@@ -54,13 +58,22 @@ export default function HousekeepingPage() {
     catch (e) { alert(e.message) }
   }
 
-  const openCreate = () => { setSaveErr(''); setForm({ roomId: '', taskType: 'STAYOVERSERVICE' }); setShow(true) }
+  const openCreate = () => {
+    setSaveErr('')
+    setForm({ roomId: '', taskType: 'STAYOVERSERVICE', assignedToId: '' })
+    setShow(true)
+  }
 
   const submit = async (e) => {
     e.preventDefault(); setSaveErr('')
     if (!form.roomId) { setSaveErr('Please select a room'); return }
+    if (!form.assignedToId) { setSaveErr('Please choose who will do this task'); return }
     try {
-      await createTask({ roomId: Number(form.roomId), taskType: form.taskType })
+      await createTask({
+        roomId: Number(form.roomId),
+        taskType: form.taskType,
+        assignedToId: Number(form.assignedToId),
+      })
       setShow(false); load()
     } catch (err) { setSaveErr(err.message) }
   }
@@ -73,6 +86,21 @@ export default function HousekeepingPage() {
 
   const staffNames = Object.fromEntries((staff || []).map(s => [s.userId, s.name]))
   const staffLabel = (staffId) => staffNames[staffId] || `Staff ${staffId}`
+
+  // Occupancy decides which task types are offered, so the room has to be chosen first.
+  const selectedRoom = (rooms || []).find(r => String(r.roomId) === String(form.roomId))
+  const selectedRoomOccupied = selectedRoom?.status === 'OCCUPIED'
+  const availableTaskTypes = !form.roomId || selectedRoomOccupied
+    ? TASK_TYPES
+    : TASK_TYPES.filter(t => !OCCUPIED_ONLY_TASK_TYPES.includes(t))
+
+  // Changing the room can invalidate the chosen type, so snap it back to something legal.
+  const pickRoom = (roomId) => setForm(f => {
+    const room = (rooms || []).find(r => String(r.roomId) === String(roomId))
+    const occupied = room?.status === 'OCCUPIED'
+    const taskType = !occupied && OCCUPIED_ONLY_TASK_TYPES.includes(f.taskType) ? 'DEEPCLEAN' : f.taskType
+    return { ...f, roomId, taskType }
+  })
 
   return (
     <div>
@@ -137,7 +165,7 @@ export default function HousekeepingPage() {
             {saveErr && <Alert variant="danger" className="py-2">{saveErr}</Alert>}
             <Form.Group className="mb-3">
               <Form.Label>Room</Form.Label>
-              <Form.Select required value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))}>
+              <Form.Select required value={form.roomId} onChange={e => pickRoom(e.target.value)}>
                 <option value="">Select a room…</option>
                 {rooms.map(r => (
                   <option key={r.roomId} value={r.roomId}>
@@ -146,11 +174,26 @@ export default function HousekeepingPage() {
                 ))}
               </Form.Select>
             </Form.Group>
-            <Form.Group>
+            <Form.Group className="mb-3">
               <Form.Label>Task Type</Form.Label>
               <Form.Select value={form.taskType} onChange={e => setForm(f => ({ ...f, taskType: e.target.value }))}>
-                {TASK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {availableTaskTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </Form.Select>
+              {form.roomId && !selectedRoomOccupied && (
+                <Form.Text className="text-muted">
+                  This room has no guest in it, so only DEEPCLEAN applies.
+                </Form.Text>
+              )}
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Assign To</Form.Label>
+              <Form.Select required value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))}>
+                <option value="">
+                  {staff.length === 0 ? 'No housekeeping staff found' : 'Select housekeeping staff…'}
+                </option>
+                {staff.map(s => <option key={s.userId} value={s.userId}>{s.name}</option>)}
+              </Form.Select>
+              <Form.Text className="text-muted">Every task needs an owner — tasks cannot be left unassigned.</Form.Text>
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>

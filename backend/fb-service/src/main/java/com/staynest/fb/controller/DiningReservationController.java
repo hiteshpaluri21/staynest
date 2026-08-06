@@ -22,7 +22,10 @@ public class DiningReservationController {
 
     private final DiningReservationService reservationService;
 
+    // Guests book their own table; F&B staff only seat/complete what has been booked, mirroring
+    // how housekeeping and front desk process requests they don't raise themselves.
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'GUEST')")
     public ResponseEntity<ApiResponse<DiningReservationResponse>> create(@Valid @RequestBody DiningReservationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Reservation created", reservationService.createReservation(request)));
