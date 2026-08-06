@@ -1,13 +1,13 @@
-import { Container, Button } from 'react-bootstrap'
-import { Link } from 'react-router-dom'
+import { Container, Button, Dropdown } from 'react-bootstrap'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   FaSwimmingPool, FaDumbbell, FaWifi, FaCarSide, FaConciergeBell, FaBroom,
   FaUtensils, FaBriefcase, FaMapMarkerAlt, FaPhoneAlt, FaEnvelope, FaClock,
-  FaUserCircle,
+  FaUserCircle, FaSignOutAlt, FaThLarge,
 } from 'react-icons/fa'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
-import { homeFor, canBook } from '../utils/home'
+import { homeFor, canBook, canViewProfile } from '../utils/home'
 
 /*
  * StayNest — public hotel site, served at "/".
@@ -113,8 +113,14 @@ const NAV_LINKS = [
 
 export default function LandingPage() {
   // Wait for the session check, otherwise a signed-in guest sees "Log in" flash first.
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated, loading, logout } = useAuth()
+  const navigate = useNavigate()
   const signedIn = isAuthenticated && !loading
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   /*
    * Booking is only open to guests — the /book route rejects every staff account,
@@ -147,13 +153,31 @@ export default function LandingPage() {
 
           <ThemeToggle />
 
-          {/* Signed out: a way in. Signed in: who you are, linking to your console. */}
+          {/*
+            * Signed out: a way in. Signed in: the same account menu as the app's own top
+            * bar. This used to be a bare link to the dashboard, so clicking it navigated
+            * away with no way to sign out without first entering the console.
+            */}
           {signedIn ? (
-            <Link to={homeFor(user?.role)} className="viewer-chip" title="Go to your dashboard">
-              <FaUserCircle aria-hidden="true" />
-              <span className="name d-none d-sm-inline">{user?.name || 'Signed in'}</span>
-              <span className="badge bg-secondary">{user?.role}</span>
-            </Link>
+            <Dropdown align="end">
+              <Dropdown.Toggle variant="link" id="viewer-dd" className="viewer-chip">
+                <FaUserCircle aria-hidden="true" />
+                <span className="name d-none d-sm-inline">{user?.name || 'Signed in'}</span>
+                <span className="badge bg-secondary">{user?.role}</span>
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                <Dropdown.Item as={Link} to={homeFor(user?.role)}>
+                  <FaThLarge className="me-2" /> My Dashboard
+                </Dropdown.Item>
+                {canViewProfile(user?.role) &&
+                  <Dropdown.Item as={Link} to="/profile">My Profile</Dropdown.Item>}
+                <Dropdown.Item as={Link} to="/notifications">Notifications</Dropdown.Item>
+                <Dropdown.Divider />
+                <Dropdown.Item onClick={handleLogout}>
+                  <FaSignOutAlt className="me-2" /> Logout
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
           ) : (
             <Button as={Link} to="/login" size="sm">Log in</Button>
           )}

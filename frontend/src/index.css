@@ -264,6 +264,50 @@ h1, h2, h3, h4, h5, h6 {
 .top-navbar {
     background: var(--sn-surface);
     border-bottom: 1px solid var(--sn-border);
+    /* Bootstrap's .navbar wraps by default, which on a narrow screen dropped the
+       controls onto a second row under the wordmark. One row at every width. */
+    flex-wrap: nowrap;
+    gap: .5rem;
+}
+
+/* The wordmark side gives up space first: the controls are all fixed-width. */
+.navbar-lead {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.navbar-lead .brand-wordmark {
+    white-space: nowrap;
+}
+
+.navbar-actions {
+    flex: 0 0 auto;
+}
+
+/* --- notification bell --- */
+
+.notification-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    /* Room for the unread pill, which is centred on the icon's top-right corner. */
+    padding: .4rem .55rem;
+    cursor: pointer;
+    color: var(--bs-body-color);
+    border-radius: var(--sn-radius-sm);
+}
+
+.notification-bell:hover {
+    background: var(--sn-surface-2);
+}
+
+.notification-bell-count {
+    position: absolute;
+    top: .1rem;
+    right: .1rem;
+    font-size: .65rem;
+    line-height: 1;
+    padding: .2rem .35rem;
 }
 
 .brand-wordmark {
@@ -584,6 +628,16 @@ h1, h2, h3, h4, h5, h6 {
 
 .viewer-chip .name {
     font-weight: 600;
+}
+
+/* It is a Dropdown.Toggle, so it arrives as a .btn-link — keep the chip's own look
+   and stop the caret inheriting the link colour. */
+.viewer-chip.show {
+    border-color: var(--sn-brand);
+}
+
+.viewer-chip::after {
+    color: var(--sn-text-muted);
 }
 
 /* --------------------------------------------------------------- hero ---- */

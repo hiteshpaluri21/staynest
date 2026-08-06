@@ -24,10 +24,12 @@ export default function NotificationBell() {
   }, [user?.userId])
 
   return (
-    <div className="position-relative me-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
+    // The unread pill sits half outside the icon, so the box needs padding of its own
+    // rather than a margin — a margin let the pill overlap the neighbouring control.
+    <div className="notification-bell" onClick={() => navigate('/notifications')} title="Notifications">
       <FaBell size={20} />
       {count > 0 && (
-        <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '.65rem' }}>
+        <span className="notification-bell-count badge rounded-pill bg-danger">
           {count > 9 ? '9+' : count}
         </span>
       )}

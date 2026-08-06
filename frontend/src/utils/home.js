@@ -23,3 +23,10 @@ export const homeFor = (role) => HOME_BY_ROLE[role] || '/book'
  * administers the hotel rather than booking a stay in it.
  */
 export const canBook = (role) => role === 'GUEST'
+
+/**
+ * Whether this role can reach the guest profile page. Must stay in step with the roles
+ * on the /profile route in App.jsx — housekeeping and F&B are not admitted, so the
+ * account menus must not offer them the link.
+ */
+export const canViewProfile = (role) => ['GUEST', 'FRONTDESK', 'ADMIN'].includes(role)

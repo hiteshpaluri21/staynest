@@ -1,9 +1,10 @@
-import { Navbar as BSNavbar, Nav, Dropdown, Button } from 'react-bootstrap'
+import { Navbar as BSNavbar, Dropdown, Button } from 'react-bootstrap'
 import { FaUserCircle, FaSignOutAlt, FaBars } from 'react-icons/fa'
 import { Link, useNavigate } from 'react-router-dom'
 import NotificationBell from './NotificationBell'
 import ThemeToggle from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import { canViewProfile } from '../utils/home'
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth()
@@ -15,8 +16,13 @@ export default function Navbar({ onToggleSidebar }) {
   }
 
   return (
-    <BSNavbar className="top-navbar px-3 px-md-4 py-2" expand="lg">
-      <div className="d-flex align-items-center gap-2 gap-md-3">
+    /*
+     * No `expand` prop: there is no collapsible section here, and Bootstrap's
+     * .navbar-expand-lg only sets flex-wrap/dropdown rules *above* 992px, which left
+     * the bar below that width wrapping onto two rows. .top-navbar pins it to one row.
+     */
+    <BSNavbar className="top-navbar px-3 px-md-4 py-2">
+      <div className="navbar-lead d-flex align-items-center gap-2 gap-md-3">
         <Button
           variant="link"
           className="sidebar-burger"
@@ -35,7 +41,14 @@ export default function Navbar({ onToggleSidebar }) {
         <span className="text-muted small d-none d-md-inline">Hotel Management</span>
       </div>
 
-      <Nav className="ms-auto align-items-center gap-1">
+      {/*
+        * A plain flex row rather than <Nav>. Inside a <Navbar>, react-bootstrap's Nav
+        * picks up Bootstrap's .navbar-nav, which is flex-direction: column and pins
+        * child dropdown menus to position: static until the expand breakpoint. That
+        * stacked these three controls vertically on tablets and phones, and made the
+        * profile menu push the bar open instead of floating over the page.
+        */}
+      <div className="navbar-actions d-flex align-items-center gap-1 ms-auto">
         <ThemeToggle />
         <NotificationBell />
         <Dropdown align="end">
@@ -48,7 +61,9 @@ export default function Navbar({ onToggleSidebar }) {
             </span>
           </Dropdown.Toggle>
           <Dropdown.Menu>
-            <Dropdown.Item as={Link} to="/profile">My Profile</Dropdown.Item>
+            {/* /profile rejects housekeeping and F&B, so they are not offered the link. */}
+            {canViewProfile(user?.role) &&
+              <Dropdown.Item as={Link} to="/profile">My Profile</Dropdown.Item>}
             <Dropdown.Item as={Link} to="/notifications">Notifications</Dropdown.Item>
             <Dropdown.Divider />
             <Dropdown.Item onClick={handleLogout}>
@@ -56,7 +71,7 @@ export default function Navbar({ onToggleSidebar }) {
             </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
-      </Nav>
+      </div>
     </BSNavbar>
   )
 }
