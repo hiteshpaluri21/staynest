@@ -26,6 +26,8 @@
     /* Shape — one radius scale, applied consistently */
     --sn-radius: 10px;
     --sn-radius-sm: 7px;
+    /* Referenced by both the docked width and the collapsed slide-out distance. */
+    --sn-sidebar-width: 232px;
     --sn-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
 
     /* Bootstrap overrides so its own components pick up the brand */
@@ -119,13 +121,94 @@ h1, h2, h3, h4, h5, h6 {
     flex: 1;
     display: flex;
     flex-direction: column;
+    /* Without this, a wide table stretches the flex item instead of scrolling
+       inside it, which is what pushed pages sideways on small screens. */
     min-width: 0;
+}
+
+/* Page padding scales with the viewport — the old flat p-4 wasted a third of a
+   phone screen on margins. */
+.page-body {
+    flex: 1;
+    padding: clamp(.85rem, 3vw, 1.5rem);
+    min-width: 0;
+}
+
+/* ---------------------------------------------------- sidebar toggling ---- */
+
+.sidebar-burger {
+    color: var(--sn-text-muted);
+    padding: .35rem .5rem;
+    line-height: 1;
+    border-radius: var(--sn-radius-sm);
+    text-decoration: none;
+}
+
+.sidebar-burger:hover {
+    color: var(--sn-brand);
+    background: var(--sn-surface-2);
+}
+
+[data-bs-theme="dark"] .sidebar-burger:hover {
+    color: var(--sn-accent);
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+/* Wide screens: the sidebar is docked. Collapsing slides it out and lets the
+   content reclaim the space. */
+@media (min-width: 992px) {
+    .sidebar {
+        transition: margin-left .2s ease;
+    }
+
+    .app-layout.sidebar-closed .sidebar {
+        margin-left: calc(-1 * var(--sn-sidebar-width));
+    }
+}
+
+/* Narrow screens: the sidebar floats over the content, so the page never has to
+   give up horizontal room for it. */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1045;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .22s ease;
+        box-shadow: 0 0 2rem rgba(0, 0, 0, .35);
+    }
+
+    .app-layout.sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+
+    .app-layout.sidebar-open .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1040;
+        background: rgba(0, 0, 0, .5);
+    }
+}
+
+/* Someone who prefers reduced motion gets the state change without the slide. */
+@media (prefers-reduced-motion: reduce) {
+
+    .sidebar {
+        transition: none;
+    }
 }
 
 /* ------------------------------------------------------------ sidebar ---- */
 
 .sidebar {
-    width: 232px;
+    width: var(--sn-sidebar-width);
     flex-shrink: 0;
     background: var(--sn-sidebar-bg);
     color: var(--sn-sidebar-fg-active);
@@ -139,6 +222,13 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
     letter-spacing: -.02em;
     border-bottom: 1px solid rgba(255, 255, 255, .08);
+    /* It is a link now, so the link colour has to be overridden. */
+    color: var(--sn-sidebar-fg-active);
+}
+
+.sidebar .brand:hover {
+    color: var(--sn-sidebar-fg-active);
+    background: rgba(255, 255, 255, .05);
 }
 
 .sidebar .brand span {
@@ -464,12 +554,36 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--sn-accent);
 }
 
-/* The anchor links are the first thing to go when width runs out — the Book
+/* The anchor links are the first thing to go when width runs out — the log-in
    button and theme toggle matter more. */
 @media (max-width: 991.98px) {
     .site-header .nav-anchors {
         display: none;
     }
+}
+
+/* Shows who is signed in, and doubles as the way into the app. */
+.viewer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .6rem;
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius-sm);
+    background: var(--sn-surface-2);
+    color: var(--bs-body-color);
+    text-decoration: none;
+    font-size: .875rem;
+    white-space: nowrap;
+}
+
+.viewer-chip:hover {
+    color: var(--bs-body-color);
+    border-color: var(--sn-brand);
+}
+
+.viewer-chip .name {
+    font-weight: 600;
 }
 
 /* --------------------------------------------------------------- hero ---- */
@@ -855,6 +969,51 @@ h1, h2, h3, h4, h5, h6 {
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
+}
+
+/* The sign-in and register cards used fixed pixel widths, which overflowed on
+   narrow phones. They are now capped rather than fixed. */
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-card-wide {
+    width: 100%;
+    max-width: 440px;
+}
+
+/* ------------------------------------------------ app-wide responsive ---- */
+
+/* Below the tablet breakpoint, let rows inside a page reflow instead of
+   overflowing. Page title rows (heading + action button) and filter rows are the
+   usual offenders. Wrapping only takes effect when the row would not fit, so
+   layouts that already fit are untouched. */
+@media (max-width: 767.98px) {
+    .page-body .d-flex:not(.flex-nowrap) {
+        flex-wrap: wrap;
+    }
+
+    /* Cards sit edge to edge, so their padding shouldn't double up with the page's. */
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Give dialogs the full width on a phone. */
+    .modal-dialog {
+        margin: .5rem;
+    }
+}
+
+/* Very narrow phones: shrink the display sizes a step further. */
+@media (max-width: 400px) {
+    .table {
+        font-size: .875rem;
+    }
+
+    h4 {
+        font-size: 1.15rem;
+    }
 }
 
 /* --------------------------------------------------------- housekeeping -- */

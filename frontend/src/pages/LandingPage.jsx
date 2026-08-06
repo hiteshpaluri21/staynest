@@ -3,15 +3,17 @@ import { Link } from 'react-router-dom'
 import {
   FaSwimmingPool, FaDumbbell, FaWifi, FaCarSide, FaConciergeBell, FaBroom,
   FaUtensils, FaBriefcase, FaMapMarkerAlt, FaPhoneAlt, FaEnvelope, FaClock,
+  FaUserCircle,
 } from 'react-icons/fa'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import { homeFor, canBook } from '../utils/home'
 
 /*
  * StayNest — public hotel site, served at "/".
  *
  * This is the hotel's own front page: it sells the property to a visitor. Nothing
- * on it needs an account. Every "Book" button goes through bookingHref() below,
+ * on it needs an account. Every booking button goes through <BookCta> below,
  * which sends signed-in guests straight to the booking search and everyone else
  * to sign-in (which itself offers registration, and drops guests on /book once
  * they are in).
@@ -110,16 +112,25 @@ const NAV_LINKS = [
 ]
 
 export default function LandingPage() {
-  // Wait for the session check, otherwise a signed-in guest sees "Sign in" flash first.
-  const { isAuthenticated, loading } = useAuth()
+  // Wait for the session check, otherwise a signed-in guest sees "Log in" flash first.
+  const { user, isAuthenticated, loading } = useAuth()
   const signedIn = isAuthenticated && !loading
 
   /*
-   * Where a "Book" button goes. Signed-in guests already have somewhere to book;
-   * everyone else needs an account first. /login carries a link to /register, and
-   * both land a guest on /book afterwards, so either route completes the booking.
+   * Booking is only open to guests (and admins) — the /book route rejects front
+   * desk, housekeeping and F&B accounts, which used to dump them on
+   * /unauthorized from these very buttons. Staff get a link to their own console
+   * instead, so no button on this page can lead to a dead end.
    */
-  const bookingHref = signedIn ? '/book' : '/login'
+  const staffViewer = signedIn && !canBook(user?.role)
+
+  /**
+   * Every booking call-to-action on the page. Guests and visitors get "Book a
+   * room"; staff get a link into their own console, because booking would 403.
+   */
+  const BookCta = ({ size }) => staffViewer
+    ? <Button as={Link} to={homeFor(user?.role)} size={size}>Open my dashboard</Button>
+    : <Button as={Link} to={signedIn ? '/book' : '/login'} size={size}>Book a room</Button>
 
   return (
     <div className="site">
@@ -135,7 +146,17 @@ export default function LandingPage() {
           </nav>
 
           <ThemeToggle />
-          <Button as={Link} to={bookingHref} size="sm">Book a room</Button>
+
+          {/* Signed out: a way in. Signed in: who you are, linking to your console. */}
+          {signedIn ? (
+            <Link to={homeFor(user?.role)} className="viewer-chip" title="Go to your dashboard">
+              <FaUserCircle aria-hidden="true" />
+              <span className="name d-none d-sm-inline">{user?.name || 'Signed in'}</span>
+              <span className="badge bg-secondary">{user?.role}</span>
+            </Link>
+          ) : (
+            <Button as={Link} to="/login" size="sm">Log in</Button>
+          )}
         </Container>
       </header>
 
@@ -150,7 +171,7 @@ export default function LandingPage() {
           </p>
 
           <div className="hero-actions">
-            <Button as={Link} to={bookingHref} size="lg">Book a room</Button>
+            <BookCta size="lg" />
             <Button href="#rooms" variant="outline-primary" size="lg">Explore rooms</Button>
           </div>
 
@@ -206,7 +227,7 @@ export default function LandingPage() {
                       <span className="amount">₹{room.rate}</span>
                       <span className="per"> / night</span>
                     </div>
-                    <Button as={Link} to={bookingHref} size="sm">Book</Button>
+                    <BookCta size="sm" />
                   </div>
                 </div>
               </article>
@@ -304,7 +325,7 @@ export default function LandingPage() {
           <div className="closing-cta">
             <h2>Come and stay with us</h2>
             <p>Check availability for your dates and book in a couple of minutes.</p>
-            <Button as={Link} to={bookingHref} size="lg">Book a room</Button>
+            <BookCta size="lg" />
           </div>
         </section>
       </Container>

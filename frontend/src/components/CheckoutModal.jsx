@@ -49,7 +49,7 @@ export default function CheckoutModal({ show, stay, roomLabel, folio = [], onClo
           </p>
 
           {folio.length > 0 && (
-            <Table size="sm" className="mb-2">
+            <Table responsive size="sm" className="mb-2">
               <tbody>
                 {folio.map(it => (
                   <tr key={it.folioItemId}>

@@ -86,7 +86,7 @@ export default function RegisterPage() {
 
   return (
     <div className="login-bg py-5">
-      <Card style={{ width: 440 }} className="shadow border-0">
+      <Card className="shadow border-0 auth-card-wide">
         <Card.Body className="p-4">
           <h3 className="text-center mb-1 brand-wordmark">StayNest</h3>
           <p className="text-center text-muted small mb-4">Create Guest Account</p>

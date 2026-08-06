@@ -48,7 +48,7 @@ export default function MenuPage() {
         items.length === 0 ? <EmptyState message="No menu items" /> :
         <Row>
           {items.map(m => (
-            <Col md={4} lg={3} key={m.menuItemId} className="mb-3">
+            <Col sm={6} md={4} lg={3} key={m.menuItemId} className="mb-3">
               <Card className="h-100 shadow-sm">
                 <Card.Body>
                   <div className="d-flex justify-content-between">

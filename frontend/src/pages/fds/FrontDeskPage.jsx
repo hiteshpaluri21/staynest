@@ -51,7 +51,7 @@ export default function FrontDeskPage() {
               <Card.Header><strong>Today's Arrivals</strong></Card.Header>
               <Card.Body>
                 {filteredArrivals.length === 0 ? <EmptyState message="No upcoming arrivals" /> :
-                  <Table hover>
+                  <Table hover responsive>
                     <thead><tr><th>Res ID</th><th>Guest</th><th>Check-In</th><th>Nights</th><th>Status / Action</th></tr></thead>
                     <tbody>
                       {filteredArrivals.map(r => {
@@ -85,7 +85,7 @@ export default function FrontDeskPage() {
               <Card.Header><strong>Active Stays</strong></Card.Header>
               <Card.Body>
                 {stays.length === 0 ? <EmptyState message="No active stays" /> :
-                  <Table hover size="sm">
+                  <Table hover responsive size="sm">
                     <thead><tr><th>Stay</th><th>Room</th><th>Balance</th><th></th></tr></thead>
                     <tbody>
                       {stays.map(s => (

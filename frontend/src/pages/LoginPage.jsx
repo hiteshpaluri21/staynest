@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { homeFor } from '../utils/home'
 
 export default function LoginPage() {
 
@@ -33,13 +34,7 @@ export default function LoginPage() {
       }
       const data = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
       login(data)
-      const role = data.role
-      const home =
-        role === 'ADMIN' ? '/users' :
-          role === 'FRONTDESK' ? '/front-desk' :
-            role === 'HOUSEKEEPING' ? '/housekeeping' :
-              role === 'FBMANAGER' ? '/orders' : '/book'
-      navigate(home)
+      navigate(homeFor(data.role))
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {
@@ -49,7 +44,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-bg">
-      <Card style={{ width: 400 }} className="shadow">
+      <Card className="shadow auth-card">
         <Card.Body className="p-4">
           <h3 className="text-center mb-1 brand-wordmark">StayNest</h3>
           <p className="text-center text-muted small mb-4">Hotel & Hospitality Management</p>

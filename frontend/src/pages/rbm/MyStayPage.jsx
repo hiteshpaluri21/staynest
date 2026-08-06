@@ -148,7 +148,7 @@ export default function MyStayPage() {
             </Card.Header>
             <Card.Body>
               {folio.length === 0 ? <p className="text-muted mb-0">No charges yet.</p> :
-                <Table size="sm" className="mb-0">
+                <Table responsive size="sm" className="mb-0">
                   <thead><tr><th>Type</th><th>Description</th><th className="text-end">Amount</th></tr></thead>
                   <tbody>
                     {folio.map(it => (
@@ -212,7 +212,7 @@ export default function MyStayPage() {
             <Card.Header><strong>My Orders</strong></Card.Header>
             <Card.Body>
               {orders.length === 0 ? <EmptyState message="No orders yet" /> :
-                <Table hover size="sm" className="mb-0">
+                <Table hover responsive size="sm" className="mb-0">
                   <thead><tr><th>ID</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
                   <tbody>
                     {orders.map(o => (

@@ -1,11 +1,11 @@
-import { Navbar as BSNavbar, Nav, Dropdown } from 'react-bootstrap'
-import { FaBell, FaUserCircle, FaSignOutAlt } from 'react-icons/fa'
+import { Navbar as BSNavbar, Nav, Dropdown, Button } from 'react-bootstrap'
+import { FaUserCircle, FaSignOutAlt, FaBars } from 'react-icons/fa'
 import { Link, useNavigate } from 'react-router-dom'
 import NotificationBell from './NotificationBell'
 import ThemeToggle from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
 
-export default function Navbar() {
+export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -15,11 +15,26 @@ export default function Navbar() {
   }
 
   return (
-    <BSNavbar className="top-navbar px-4 py-2" expand="lg">
-      <div className="d-flex align-items-center gap-2">
-        <strong className="brand-wordmark">StayNest</strong>
-        <span className="text-muted small">Hotel Management</span>
+    <BSNavbar className="top-navbar px-3 px-md-4 py-2" expand="lg">
+      <div className="d-flex align-items-center gap-2 gap-md-3">
+        <Button
+          variant="link"
+          className="sidebar-burger"
+          onClick={onToggleSidebar}
+          aria-label="Toggle navigation menu"
+          title="Toggle menu"
+        >
+          <FaBars size={18} />
+        </Button>
+
+        {/* The wordmark is the way back to the public hotel site. */}
+        <Link to="/" className="brand-wordmark text-decoration-none">
+          StayNest
+        </Link>
+        {/* Dropped on phones, where the row needs the space for the controls. */}
+        <span className="text-muted small d-none d-md-inline">Hotel Management</span>
       </div>
+
       <Nav className="ms-auto align-items-center gap-1">
         <ThemeToggle />
         <NotificationBell />
@@ -27,7 +42,8 @@ export default function Navbar() {
           {/* variant="light" would stay a near-white pill in dark mode, so this is themed by class. */}
           <Dropdown.Toggle variant="link" id="user-dd" className="user-menu-toggle d-flex align-items-center gap-2">
             <FaUserCircle size={22} />
-            <span className="small">
+            {/* Name and role are hidden on phones; the avatar alone opens the menu. */}
+            <span className="small d-none d-sm-inline">
               {user?.name || 'User'} <span className="badge bg-secondary">{user?.role}</span>
             </span>
           </Dropdown.Toggle>

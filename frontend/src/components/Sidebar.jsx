@@ -1,5 +1,5 @@
 import { Nav } from 'react-bootstrap'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { FaUsers, FaBed, FaDoorOpen, FaTags, FaSearch, FaCalendarCheck, FaIdCard, FaConciergeBell, FaClipboardList, FaBroom, FaTools, FaUtensils, FaBell, FaClipboardCheck, FaBookOpen, FaListAlt, FaReceipt } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 
@@ -31,7 +31,8 @@ export default function Sidebar() {
 
   return (
     <div className="sidebar">
-      <div className="brand">Stay<span>Nest</span></div>
+      {/* Clicking the logo leaves the app for the public hotel site. */}
+      <Link to="/" className="brand text-decoration-none d-block">Stay<span>Nest</span></Link>
       <Nav className="flex-column mt-2">
         {links.map(l => (
           <Nav.Link key={l.to} as={NavLink} to={l.to} className={({ isActive }) => isActive ? 'active' : ''}>

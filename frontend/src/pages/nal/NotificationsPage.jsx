@@ -44,7 +44,7 @@ export default function NotificationsPage() {
           {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
           {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
             filtered.length === 0 ? <EmptyState message="No notifications" /> :
-            <Table hover>
+            <Table hover responsive>
               <thead><tr><th>Category</th><th>Message</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
               <tbody>
                 {filtered.map(n => (

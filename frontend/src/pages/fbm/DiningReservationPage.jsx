@@ -150,9 +150,9 @@ export default function DiningReservationPage() {
             {saveErr && <Alert variant="danger" className="py-2">{saveErr}</Alert>}
             <Form.Group className="mb-3"><Form.Label>Outlet</Form.Label><Form.Select value={form.restaurantOutlet} onChange={e => set('restaurantOutlet', e.target.value)}>{OUTLETS.map(o => <option key={o}>{o}</option>)}</Form.Select></Form.Group>
             <Row>
-              <Col md={4}><Form.Group className="mb-3"><Form.Label>Date</Form.Label><Form.Control type="date" required min={new Date().toISOString().split('T')[0]} value={form.date} onChange={e => set('date', e.target.value)} /></Form.Group></Col>
-              <Col md={4}><Form.Group className="mb-3"><Form.Label>Time</Form.Label><Form.Control type="time" required value={form.time} onChange={e => set('time', e.target.value)} /></Form.Group></Col>
-              <Col md={4}><Form.Group className="mb-3"><Form.Label>Covers</Form.Label><Form.Control type="number" min="1" required value={form.covers} onChange={e => set('covers', e.target.value)} /></Form.Group></Col>
+              <Col xs={6} md={4}><Form.Group className="mb-3"><Form.Label>Date</Form.Label><Form.Control type="date" required min={new Date().toISOString().split('T')[0]} value={form.date} onChange={e => set('date', e.target.value)} /></Form.Group></Col>
+              <Col xs={6} md={4}><Form.Group className="mb-3"><Form.Label>Time</Form.Label><Form.Control type="time" required value={form.time} onChange={e => set('time', e.target.value)} /></Form.Group></Col>
+              <Col xs={12} md={4}><Form.Group className="mb-3"><Form.Label>Covers</Form.Label><Form.Control type="number" min="1" required value={form.covers} onChange={e => set('covers', e.target.value)} /></Form.Group></Col>
             </Row>
             <p className="text-muted small mb-0">
               {activeStayId != null

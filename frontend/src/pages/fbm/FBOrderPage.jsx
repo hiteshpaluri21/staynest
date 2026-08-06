@@ -168,7 +168,7 @@ export default function FBOrderPage() {
             <Card.Body>
               {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
               {loading ? <Loader /> : orders.length === 0 ? <EmptyState /> :
-                <Table hover size="sm">
+                <Table hover responsive size="sm">
                   <thead><tr><th>ID</th><th>Guest</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {orders.map(o => (

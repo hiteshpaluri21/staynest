@@ -29,6 +29,25 @@ public class RatePlanController {
                 .body(ApiResponse.success("RatePlan created", ratePlanService.createRatePlan(request)));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RatePlanResponse>> update(
+            @PathVariable Integer id,
+            @Valid @RequestBody RatePlanRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("RatePlan updated", ratePlanService.updateRatePlan(id, request)));
+    }
+
+    /**
+     * Hard delete. For a plan guests have already booked on, deactivating via
+     * /{id}/status is the safer move — see the note in RatePlanServiceImpl.
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Integer id) {
+        ratePlanService.deleteRatePlan(id);
+        return ResponseEntity.ok(ApiResponse.success("RatePlan deleted", null));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<RatePlanResponse>>> getAll(
             @RequestParam(required = false) Integer roomTypeId,

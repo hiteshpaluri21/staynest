@@ -105,12 +105,15 @@ export default function BookingSearchPage() {
       <Card className="shadow-sm mb-4">
         <Card.Body>
           <Form onSubmit={search}>
-            <Row>
-              <Col md={3}><Form.Group><Form.Label>Check-In</Form.Label><Form.Control type="date" min={todayStr} required value={form.checkIn} onChange={handleCheckInChange} /></Form.Group></Col>
-              <Col md={3}><Form.Group><Form.Label>Check-Out</Form.Label><Form.Control type="date" min={addDays(form.checkIn, 1)} required value={form.checkOut} onChange={e => set('checkOut', e.target.value)} /></Form.Group></Col>
-              <Col md={2}><Form.Group><Form.Label>Adults</Form.Label><Form.Control type="number" min="1" value={form.adults} onChange={e => set('adults', e.target.value)} /></Form.Group></Col>
-              <Col md={2}><Form.Group><Form.Label>Children</Form.Label><Form.Control type="number" min="0" value={form.children} onChange={e => set('children', e.target.value)} /></Form.Group></Col>
-              <Col md={2} className="d-flex align-items-end"><Button type="submit" className="w-100">Search</Button></Col>
+            {/* Five across only from lg up. At md the date inputs were ~180px and the
+                number inputs ~120px, which is too narrow to read. Below that they pair
+                up two per row, and the button takes the full width. */}
+            <Row className="g-2">
+              <Col xs={6} lg={3}><Form.Group><Form.Label>Check-In</Form.Label><Form.Control type="date" min={todayStr} required value={form.checkIn} onChange={handleCheckInChange} /></Form.Group></Col>
+              <Col xs={6} lg={3}><Form.Group><Form.Label>Check-Out</Form.Label><Form.Control type="date" min={addDays(form.checkIn, 1)} required value={form.checkOut} onChange={e => set('checkOut', e.target.value)} /></Form.Group></Col>
+              <Col xs={6} sm={3} lg={2}><Form.Group><Form.Label>Adults</Form.Label><Form.Control type="number" min="1" value={form.adults} onChange={e => set('adults', e.target.value)} /></Form.Group></Col>
+              <Col xs={6} sm={3} lg={2}><Form.Group><Form.Label>Children</Form.Label><Form.Control type="number" min="0" value={form.children} onChange={e => set('children', e.target.value)} /></Form.Group></Col>
+              <Col xs={12} sm={6} lg={2} className="d-flex align-items-end"><Button type="submit" className="w-100">Search</Button></Col>
             </Row>
           </Form>
         </Card.Body>

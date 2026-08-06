@@ -71,7 +71,7 @@ export default function StayDetailPage() {
             <Card.Header><strong>Folio Items</strong></Card.Header>
             <Card.Body>
               {items.length === 0 ? <p className="text-muted">No charges posted yet.</p> :
-                <Table hover size="sm">
+                <Table hover responsive size="sm">
                   <thead><tr><th>Type</th><th>Description</th><th>Amount</th><th>Posted</th>{stay.status === 'ACTIVE' && <th></th>}</tr></thead>
                   <tbody>
                     {items.map(it => (

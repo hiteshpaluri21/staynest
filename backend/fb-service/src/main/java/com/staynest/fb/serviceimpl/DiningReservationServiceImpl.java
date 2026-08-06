@@ -40,6 +40,18 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         if (request.getStayId() != null) {
             validateStay(request.getStayId());
         }
+        // One table per guest, per outlet, per slot. Only CONFIRMED and SEATED bookings
+        // block a rebooking, so cancelling and booking the same slot again works.
+        boolean alreadyBooked = reservationRepository
+                .existsByGuestIdAndRestaurantOutletIgnoreCaseAndDateAndTimeAndStatusIn(
+                        request.getGuestId(), request.getRestaurantOutlet(),
+                        request.getDate(), request.getTime(),
+                        List.of(DiningResStatus.CONFIRMED, DiningResStatus.SEATED));
+        if (alreadyBooked) {
+            throw new BadRequestException("You already have a table at " + request.getRestaurantOutlet()
+                    + " on " + request.getDate() + " at " + request.getTime()
+                    + ". Cancel that booking first if you want to change it.");
+        }
 
         DiningReservation reservation = DiningReservation.builder()
                 .guestId(request.getGuestId())
