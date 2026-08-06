@@ -5,6 +5,7 @@ import com.staynest.fb.dto.MenuItemResponse;
 import com.staynest.fb.enums.MenuCategory;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 public interface MenuItemService {
     MenuItemResponse addMenuItem(MenuItemRequest request);
@@ -14,5 +15,5 @@ public interface MenuItemService {
     List<MenuItemResponse> getMenuItemsByCategory(MenuCategory category);
     List<MenuItemResponse> getAvailableMenuItems();
     MenuItemResponse updateAvailability(Integer id, Boolean isAvailable);
-    MenuItemResponse updatePrice(Integer id, java.math.BigDecimal price);
+    MenuItemResponse updatePrice(Integer id, BigDecimal price);
 }

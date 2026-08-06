@@ -23,6 +23,13 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.reservation.client.IamServiceClient;
+import com.staynest.reservation.client.NotificationServiceClient;
+import com.staynest.reservation.enums.BookingChannel;
+import com.staynest.reservation.enums.GuestStatus;
+import com.staynest.reservation.enums.LoyaltyTier;
+import java.util.Map;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 public class ReservationServiceImpl implements ReservationService {
@@ -39,10 +46,10 @@ public class ReservationServiceImpl implements ReservationService {
 	private RoomServiceClient roomServiceClient;
 
 	@Autowired
-	private com.staynest.reservation.client.IamServiceClient iamServiceClient;
+	private IamServiceClient iamServiceClient;
 
 	@Autowired
-	private com.staynest.reservation.client.NotificationServiceClient notificationServiceClient;
+	private NotificationServiceClient notificationServiceClient;
 
 	/**
 	 * Fire-and-forget notification; a failure here must never fail the primary
@@ -53,7 +60,7 @@ public class ReservationServiceImpl implements ReservationService {
 			return;
 		try {
 			notificationServiceClient
-					.create(java.util.Map.of("userId", userId, "category", category, "message", message));
+					.create(Map.of("userId", userId, "category", category, "message", message));
 		} catch (Exception e) {
 			log.warn("Failed to send {} notification to user {}: {}", category, userId, e.getMessage());
 		}
@@ -97,8 +104,8 @@ public class ReservationServiceImpl implements ReservationService {
 				GuestProfile gp = new GuestProfile();
 				gp.setName(realName);
 				gp.setEmail(realEmail);
-				gp.setStatus(com.staynest.reservation.enums.GuestStatus.ACTIVE);
-				gp.setLoyaltyTier(com.staynest.reservation.enums.LoyaltyTier.NONE);
+				gp.setStatus(GuestStatus.ACTIVE);
+				gp.setLoyaltyTier(LoyaltyTier.NONE);
 				return guestProfileRepository.save(gp);
 			});
 		});
@@ -145,8 +152,8 @@ public class ReservationServiceImpl implements ReservationService {
 			var roomsResp = roomServiceClient.getAllRooms();
 			if (roomsResp != null && roomsResp.getData() instanceof List) {
 				List<?> list = (List<?>) roomsResp.getData();
-				long totalPhysicalRooms = list.stream().filter(obj -> obj instanceof java.util.Map)
-						.map(obj -> (java.util.Map<?, ?>) obj).filter(map -> {
+				long totalPhysicalRooms = list.stream().filter(obj -> obj instanceof Map)
+						.map(obj -> (Map<?, ?>) obj).filter(map -> {
 							Object typeId = map.get("roomTypeId");
 							Object status = map.get("status");
 							return typeId != null && Integer.parseInt(typeId.toString()) == request.getRoomTypeId()
@@ -168,17 +175,22 @@ public class ReservationServiceImpl implements ReservationService {
 			log.warn("Room availability check warning: {}", e.getMessage());
 		}
 
-		// Validate ratePlan if specified
+		// The rate plan decides what the guest is charged, so a bad one is rejected rather
+		// than quietly swapped for plan 1. Silently substituting meant a booking could be
+		// priced against a completely unrelated plan, and made plan 1 undeletable in
+		// practice. A room-service outage is reported as such instead of mispricing.
 		Integer finalRatePlanId = request.getRatePlanId();
-		if (finalRatePlanId != null && finalRatePlanId > 0) {
-			try {
-				roomServiceClient.getRatePlanById(finalRatePlanId);
-			} catch (Exception e) {
-				log.warn("RatePlanId {} validation failed, defaulting ratePlanId: {}", finalRatePlanId, e.getMessage());
-				finalRatePlanId = 1;
-			}
-		} else {
-			finalRatePlanId = 1;
+		if (finalRatePlanId == null || finalRatePlanId <= 0) {
+			throw new BadRequestException("A rate plan must be selected for the booking");
+		}
+		try {
+			roomServiceClient.getRatePlanById(finalRatePlanId);
+		} catch (FeignException.NotFound e) {
+			throw new BadRequestException("Invalid RatePlanId: " + finalRatePlanId + " (no such rate plan)");
+		} catch (Exception e) {
+			log.error("room-service call failed while validating RatePlanId {}", finalRatePlanId, e);
+			throw new BadRequestException("Unable to validate RatePlanId " + finalRatePlanId
+					+ " (room-service error: " + e.getMessage() + ")");
 		}
 
 		// Derive nights from the dates rather than trusting the client-supplied value.
@@ -199,7 +211,7 @@ public class ReservationServiceImpl implements ReservationService {
 		reservation.setChildren(request.getChildren() != null ? request.getChildren() : 0);
 		reservation.setTotalAmount(request.getTotalAmount());
 		reservation.setBookingChannel(request.getBookingChannel() != null ? request.getBookingChannel()
-				: com.staynest.reservation.enums.BookingChannel.DIRECT);
+				: BookingChannel.DIRECT);
 		reservation.setStatus(ReservationStatus.CONFIRMED);
 
 		Reservation saved = reservationRepository.save(reservation);
@@ -296,11 +308,11 @@ public class ReservationServiceImpl implements ReservationService {
 		String name = "Guest #" + guestId;
 		String email = fallbackEmail;
 		try {
-			var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+			var auth = SecurityContextHolder.getContext().getAuthentication();
 			if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
 				var resp = iamServiceClient.getUserByEmail(auth.getName());
 				if (resp != null && resp.getData() != null) {
-					java.util.Map<String, Object> u = resp.getData();
+					Map<String, Object> u = resp.getData();
 					Object uid = u.get("userId");
 					if (uid != null && Integer.parseInt(uid.toString()) == guestId) {
 						if (u.get("name") != null && !u.get("name").toString().isBlank()) {
@@ -324,10 +336,10 @@ public class ReservationServiceImpl implements ReservationService {
 	 * occupancy check rather than reject a booking because of a deserialization quirk.
 	 */
 	private Integer extractMaxOccupancy(ApiResponse<?> roomTypeResp) {
-		if (roomTypeResp == null || !(roomTypeResp.getData() instanceof java.util.Map)) {
+		if (roomTypeResp == null || !(roomTypeResp.getData() instanceof Map)) {
 			return null;
 		}
-		Object value = ((java.util.Map<?, ?>) roomTypeResp.getData()).get("maxOccupancy");
+		Object value = ((Map<?, ?>) roomTypeResp.getData()).get("maxOccupancy");
 		if (value == null) {
 			return null;
 		}

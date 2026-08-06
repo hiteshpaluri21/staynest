@@ -5,6 +5,7 @@ import com.staynest.iam.dto.UserResponse;
 import com.staynest.iam.enums.UserStatus;
 
 import java.util.List;
+import com.staynest.iam.enums.Role;
 
 public interface UserService {
 
@@ -13,7 +14,7 @@ public interface UserService {
     UserResponse getUserByEmail(String email);
     List<UserResponse> getAllUsers();
     List<UserResponse> getUsersByStatus(UserStatus status);
-    List<UserResponse> getActiveUsersByRole(com.staynest.iam.enums.Role role);
+    List<UserResponse> getActiveUsersByRole(Role role);
     UserResponse updateUserStatus(Integer id, UserStatus status);
     void deleteUser(Integer id);
 }

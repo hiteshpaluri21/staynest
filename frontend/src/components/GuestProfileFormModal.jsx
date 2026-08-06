@@ -64,7 +64,6 @@ export default function GuestProfileFormModal({ show, guest, onClose, onSaved })
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3"><Form.Label>ID Number</Form.Label><Form.Control value={form.idNumber || ''} onChange={e => set('idNumber', e.target.value)} /></Form.Group>
-          {/* <Form.Group className="mb-3"><Form.Label>Preferences</Form.Label><Form.Control as="textarea" rows={2} value={form.preferencesJson || ''} onChange={e => set('preferencesJson', e.target.value)} /></Form.Group> */}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

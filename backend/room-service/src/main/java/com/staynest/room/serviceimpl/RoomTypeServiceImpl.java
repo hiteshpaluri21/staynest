@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,6 +28,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 	private RoomTypeRepository roomTypeRepository;
 
 	@Override
+	@Transactional
 	public RoomTypeResponse createRoomType(RoomTypeRequest request) {
 		checkDuplicate(request, null);
 
@@ -56,6 +58,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 	}
 
 	@Override
+	@Transactional
 	public RoomTypeResponse updateRoomType(Integer id, RoomTypeRequest request) {
 		RoomType roomType = roomTypeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("RoomType not found: " + id));
@@ -73,6 +76,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 	}
 
 	@Override
+	@Transactional
 	public RoomTypeResponse updateStatus(Integer id, RatePlanStatus status) {
 		RoomType roomType = roomTypeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("RoomType not found: " + id));

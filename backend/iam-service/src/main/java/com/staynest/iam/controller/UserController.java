@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.staynest.iam.enums.Role;
 
 @Slf4j
 @RestController
@@ -55,7 +56,7 @@ public class UserController {
     // for notifications (e.g. all FRONTDESK / HOUSEKEEPING users). Returns ACTIVE users only.
     @GetMapping("/role/{role}")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getUsersByRole(
-            @PathVariable com.staynest.iam.enums.Role role) {
+            @PathVariable Role role) {
         return ResponseEntity.ok(ApiResponse.success(userService.getActiveUsersByRole(role)));
     }
 

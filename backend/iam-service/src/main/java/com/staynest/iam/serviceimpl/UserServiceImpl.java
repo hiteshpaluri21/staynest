@@ -14,9 +14,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.iam.enums.Role;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -33,6 +35,7 @@ public class UserServiceImpl implements UserService {
     private AuditLogService auditLogService;
 
     @Override
+    @Transactional
     public UserResponse createUser(UserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already exists: " + request.getEmail());
@@ -77,12 +80,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserResponse> getActiveUsersByRole(com.staynest.iam.enums.Role role) {
+    public List<UserResponse> getActiveUsersByRole(Role role) {
         return userRepository.findByRoleAndStatus(role, UserStatus.ACTIVE).stream()
                 .map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional
     public UserResponse updateUserStatus(Integer id, UserStatus status) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
@@ -94,6 +98,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void deleteUser(Integer id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));

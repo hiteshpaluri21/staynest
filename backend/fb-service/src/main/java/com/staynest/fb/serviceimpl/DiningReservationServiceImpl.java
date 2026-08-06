@@ -14,6 +14,7 @@ import com.staynest.fb.service.DiningReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,6 +30,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
     private final FrontDeskServiceClient frontDeskServiceClient;
 
     @Override
+    @Transactional
     public DiningReservationResponse createReservation(DiningReservationRequest request) {
         // The reservation date can't be in the past.
         if (request.getDate() == null || request.getDate().isBefore(LocalDate.now())) {
@@ -68,6 +70,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
     }
 
     @Override
+    @Transactional
     public DiningReservationResponse updateReservationStatus(Integer id, DiningResStatus status) {
         DiningReservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dining reservation not found: " + id));
@@ -83,6 +86,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
      * can be cancelled — once the party is at the table, F&B closes it out as COMPLETED instead.
      */
     @Override
+    @Transactional
     public DiningReservationResponse cancelReservation(Integer id) {
         DiningReservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dining reservation not found: " + id));

@@ -11,6 +11,7 @@ import com.staynest.fb.service.MenuItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -24,6 +25,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     private final MenuItemRepository menuItemRepository;
 
     @Override
+    @Transactional
     public MenuItemResponse addMenuItem(MenuItemRequest request) {
         String name = normaliseName(request.getName());
         rejectDuplicateName(name, null);
@@ -40,6 +42,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     }
 
     @Override
+    @Transactional
     public MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MenuItem not found: " + id));
@@ -107,6 +110,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     }
 
     @Override
+    @Transactional
     public MenuItemResponse updateAvailability(Integer id, Boolean isAvailable) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MenuItem not found: " + id));
@@ -117,6 +121,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     }
 
     @Override
+    @Transactional
     public MenuItemResponse updatePrice(Integer id, BigDecimal price) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MenuItem not found: " + id));

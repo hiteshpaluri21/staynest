@@ -14,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.staynest.frontdesk.dto.FolioItemResponse;
+import com.staynest.frontdesk.service.FolioItemService;
 
 @Slf4j
 @RestController
@@ -22,7 +24,7 @@ import java.util.List;
 public class StayRecordController {
 
     private final StayRecordService stayRecordService;
-    private final com.staynest.frontdesk.service.FolioItemService folioItemService;
+    private final FolioItemService folioItemService;
 
     @PostMapping("/checkin")
     @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK')")
@@ -61,14 +63,14 @@ public class StayRecordController {
     }
 
     @GetMapping("/{id}/folio-items")
-    public ResponseEntity<ApiResponse<List<com.staynest.frontdesk.dto.FolioItemResponse>>> getFolioItems(
+    public ResponseEntity<ApiResponse<List<FolioItemResponse>>> getFolioItems(
             @PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(folioItemService.getFolioItemsByStayId(id)));
     }
 
     @PutMapping("/{id}/folio-items/{folioItemId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FRONTDESK', 'FBMANAGER')")
-    public ResponseEntity<ApiResponse<com.staynest.frontdesk.dto.FolioItemResponse>> updateFolioItem(
+    public ResponseEntity<ApiResponse<FolioItemResponse>> updateFolioItem(
             @PathVariable Integer id,
             @PathVariable Integer folioItemId,
             @Valid @RequestBody FolioItemRequest request) {

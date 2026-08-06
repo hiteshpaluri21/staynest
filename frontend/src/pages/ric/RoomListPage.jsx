@@ -58,7 +58,6 @@ export default function RoomListPage() {
           <Table hover responsive>
             <thead>
               <tr>
-                {/* <th>ID</th> */}
                 <th>Room No</th>
                 <th>Floor</th>
                 <th>Type</th>
@@ -69,7 +68,6 @@ export default function RoomListPage() {
             <tbody>
               {shownRooms.map(r => (
                 <tr key={r.roomId}>
-                  {/* <td>{r.roomId}</td> */}
                   <td><strong>{r.roomNumber}</strong></td>
                   <td>{r.floor}</td>
                   <td>{r.roomTypeName}</td>

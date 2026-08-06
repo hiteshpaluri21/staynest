@@ -72,7 +72,6 @@ export default function GuestProfilePage() {
                 <div className="col-md-6 mb-2"><strong>Nationality:</strong> {guest.nationality || 'Indian'}</div>
                 <div className="col-md-6 mb-2"><strong>ID Type:</strong> {guest.idDocumentType || '—'}</div>
                 <div className="col-md-6 mb-2"><strong>ID Number:</strong> {guest.idNumber || '—'}</div>
-                {/* <div className="col-12 mt-2"><strong>Preferences:</strong> <span className="text-muted">{guest.preferencesJson || '—'}</span></div> */}
               </>
             ) : (
               <div className="col-12 mt-2 text-muted small">

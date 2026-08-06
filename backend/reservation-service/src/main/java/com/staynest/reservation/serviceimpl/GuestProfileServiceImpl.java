@@ -14,9 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.reservation.client.IamServiceClient;
+import java.util.Map;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 public class GuestProfileServiceImpl implements GuestProfileService {
@@ -28,9 +32,10 @@ public class GuestProfileServiceImpl implements GuestProfileService {
 
     /** Optional so the service still starts if iam-service is unreachable. */
     @Autowired(required = false)
-    private com.staynest.reservation.client.IamServiceClient iamServiceClient;
+    private IamServiceClient iamServiceClient;
 
     @Override
+    @Transactional
     public GuestProfileResponse getOrCreateCurrentGuest() {
         String email = currentUserEmail();
         if (email == null) {
@@ -39,7 +44,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
 
         // Registration stores name/phone on the IAM user, not here, so carry them across rather
         // than making the guest type their phone number a second time when they book.
-        java.util.Map<String, Object> iamUser = fetchIamUser(email);
+        Map<String, Object> iamUser = fetchIamUser(email);
 
         GuestProfile guest = guestProfileRepository.findByEmail(email).orElseGet(() -> {
             GuestProfile gp = new GuestProfile();
@@ -74,7 +79,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     }
 
     /** Reads a string field from the IAM user payload, falling back when absent or blank. */
-    private static String valueOf(java.util.Map<String, Object> user, String key, String fallback) {
+    private static String valueOf(Map<String, Object> user, String key, String fallback) {
         if (user == null) {
             return fallback;
         }
@@ -83,7 +88,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     }
 
     /** Best-effort IAM user lookup; returns null if iam-service is unreachable. */
-    private java.util.Map<String, Object> fetchIamUser(String email) {
+    private Map<String, Object> fetchIamUser(String email) {
         try {
             if (iamServiceClient != null) {
                 var resp = iamServiceClient.getUserByEmail(email);
@@ -99,7 +104,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
 
     /** The JWT subject is the user's email (see JwtUtil / JwtFilter). */
     private String currentUserEmail() {
-        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
             return null;
         }
@@ -108,6 +113,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
 
 
     @Override
+    @Transactional
     public GuestProfileResponse createGuestProfile(GuestProfileRequest request) {
         if (guestProfileRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already exists: " + request.getEmail());
@@ -154,6 +160,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     }
 
     @Override
+    @Transactional
     public GuestProfileResponse updateGuestProfile(Integer id, GuestProfileUpdateRequest request) {
         GuestProfile guest = guestProfileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guest not found: " + id));
@@ -177,6 +184,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     }
 
     @Override
+    @Transactional
     public GuestProfileResponse updateLoyaltyTier(Integer id, LoyaltyTier tier) {
         GuestProfile guest = guestProfileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guest not found: " + id));
@@ -187,6 +195,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     }
 
     @Override
+    @Transactional
     public GuestProfileResponse blacklistGuest(Integer id) {
         GuestProfile guest = guestProfileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guest not found: " + id));

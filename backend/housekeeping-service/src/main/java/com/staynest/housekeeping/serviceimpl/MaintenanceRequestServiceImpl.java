@@ -11,10 +11,14 @@ import com.staynest.housekeeping.service.MaintenanceRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.housekeeping.client.IamServiceClient;
+import com.staynest.housekeeping.client.NotificationServiceClient;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -22,14 +26,14 @@ import java.util.stream.Collectors;
 public class MaintenanceRequestServiceImpl implements MaintenanceRequestService {
 
     private final MaintenanceRequestRepository maintenanceRepository;
-    private final com.staynest.housekeeping.client.NotificationServiceClient notificationServiceClient;
-    private final com.staynest.housekeeping.client.IamServiceClient iamServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
+    private final IamServiceClient iamServiceClient;
 
     /** Fire-and-forget notification; a failure here must never fail the primary action. */
     private void notify(Integer userId, String message) {
         if (userId == null) return;
         try {
-            notificationServiceClient.create(java.util.Map.of(
+            notificationServiceClient.create(Map.of(
                     "userId", userId, "category", "HOUSEKEEPING", "message", message));
         } catch (Exception e) {
             log.warn("Failed to send HOUSEKEEPING notification to user {}: {}", userId, e.getMessage());
@@ -54,6 +58,7 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
     }
 
     @Override
+    @Transactional
     public MaintenanceResponse reportIssue(MaintenanceRequestDto request) {
         MaintenanceRequest maintenance = MaintenanceRequest.builder()
                 .roomId(request.getRoomId())
@@ -73,6 +78,7 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
     }
 
     @Override
+    @Transactional
     public MaintenanceResponse updateStatus(Integer requestId, MaintenanceStatus status) {
         MaintenanceRequest request = maintenanceRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Maintenance request not found: " + requestId));
@@ -94,6 +100,7 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
     }
 
     @Override
+    @Transactional
     public MaintenanceResponse resolveRequest(Integer requestId) {
         MaintenanceRequest request = maintenanceRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Maintenance request not found: " + requestId));

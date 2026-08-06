@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import com.staynest.iam.enums.Role;
+import com.staynest.iam.enums.UserStatus;
 
 @Slf4j
 @RestController
@@ -39,7 +41,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(ApiResponse.error("Invalid email or password"));
         }
 
-        if (user.getStatus() == com.staynest.iam.enums.UserStatus.INACTIVE) {
+        if (user.getStatus() == UserStatus.INACTIVE) {
             log.warn("Login attempt for deactivated user: {}", request.getEmail());
             return ResponseEntity.status(403).body(ApiResponse.error("Account is deactivated. Please contact an administrator."));
         }
@@ -68,7 +70,7 @@ public class AuthController {
 
         // Public self-registration must never let a client choose a privileged role.
         // Force GUEST regardless of what the request body supplies.
-        request.setRole(com.staynest.iam.enums.Role.GUEST);
+        request.setRole(Role.GUEST);
 
         UserResponse created = userService.createUser(request);
         String token = jwtUtil.generateToken(created.getEmail(), created.getRole().name());

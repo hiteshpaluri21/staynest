@@ -15,9 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.room.client.ReservationServiceClient;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Map;
 
 @Service
 public class RoomServiceImpl implements RoomService {
@@ -31,6 +36,7 @@ public class RoomServiceImpl implements RoomService {
     private RoomTypeRepository roomTypeRepository;
 
     @Override
+    @Transactional
     public RoomResponse addRoom(RoomRequest request) {
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new BadRequestException("Invalid RoomTypeId: " + request.getRoomTypeId()));
@@ -63,37 +69,56 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Autowired(required = false)
-    private com.staynest.room.client.ReservationServiceClient reservationServiceClient;
+    private ReservationServiceClient reservationServiceClient;
 
     @Override
     public List<RoomResponse> getRoomsByStatus(RoomStatus status) {
         return roomRepository.findByStatus(status).stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    /**
+     * Rooms that are physically available and not already committed for the given dates.
+     *
+     * Reads as four steps: fetch the physical rooms, count what is booked per room type over
+     * the window, subtract, and map. Each step is a method below.
+     */
     @Override
     public List<RoomResponse> getAvailableRooms(String checkIn, String checkOut) {
         List<Room> available = roomRepository.findByStatus(RoomStatus.AVAILABLE);
+
         // With no dates there is no availability question to answer — return the physical rooms.
         if (checkIn == null || checkOut == null) {
             return available.stream().map(this::mapToResponse).collect(Collectors.toList());
         }
 
-        // Anything that stops us cross-checking existing reservations must fail closed. Returning
-        // the unfiltered list would advertise rooms that are already booked and invite double
-        // bookings, which is exactly what happened while the JWT was not being forwarded.
+        LocalDate searchIn = LocalDate.parse(checkIn);
+        LocalDate searchOut = LocalDate.parse(checkOut);
+
+        Map<Integer, Long> bookedCounts = countBookedByRoomType(fetchReservations(), searchIn, searchOut);
+
+        return takeUnbookedRooms(available, bookedCounts).stream()
+                .map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Every reservation known to reservation-service.
+     *
+     * Fails closed: anything that stops the cross-check throws rather than returning an
+     * unfiltered list, which would advertise already-booked rooms and invite double bookings —
+     * exactly what happened while the JWT was not being forwarded.
+     */
+    private List<?> fetchReservations() {
         if (reservationServiceClient == null) {
             throw new ServiceUnavailableException(
                     "Cannot verify room availability: reservation-service client is unavailable.");
         }
-
-        List<?> reservations;
         try {
             var resResponse = reservationServiceClient.getAllReservations(null);
             if (resResponse == null || !(resResponse.getData() instanceof List)) {
                 throw new ServiceUnavailableException(
                         "Cannot verify room availability: reservation-service returned no data.");
             }
-            reservations = (List<?>) resResponse.getData();
+            return (List<?>) resResponse.getData();
         } catch (ServiceUnavailableException e) {
             throw e;
         } catch (Exception e) {
@@ -101,42 +126,57 @@ public class RoomServiceImpl implements RoomService {
             throw new ServiceUnavailableException(
                     "Cannot verify room availability right now. Please try again in a moment.");
         }
+    }
 
-        java.time.LocalDate searchIn = java.time.LocalDate.parse(checkIn);
-        java.time.LocalDate searchOut = java.time.LocalDate.parse(checkOut);
+    /** How many live reservations of each room type overlap the requested window. */
+    private Map<Integer, Long> countBookedByRoomType(List<?> reservations, LocalDate searchIn, LocalDate searchOut) {
+        return reservations.stream()
+                .filter(Map.class::isInstance)
+                .map(obj -> (Map<?, ?>) obj)
+                .filter(res -> holdsARoom(res) && overlaps(res, searchIn, searchOut))
+                .filter(res -> res.get("roomTypeId") != null)
+                .collect(Collectors.groupingBy(
+                        res -> Integer.parseInt(res.get("roomTypeId").toString()),
+                        Collectors.counting()));
+    }
 
-        java.util.Map<Integer, Long> bookedCounts = reservations.stream()
-                .filter(obj -> obj instanceof java.util.Map)
-                .map(obj -> (java.util.Map<?, ?>) obj)
-                .filter(map -> {
-                    Object status = map.get("status");
-                    if (status == null) return false;
-                    String st = status.toString();
-                    if (!"CONFIRMED".equalsIgnoreCase(st) && !"CHECKEDIN".equalsIgnoreCase(st)) return false;
-                    Object inObj = map.get("checkInDate");
-                    Object outObj = map.get("checkOutDate");
-                    if (inObj == null || outObj == null) return false;
-                    java.time.LocalDate resIn = java.time.LocalDate.parse(inObj.toString());
-                    java.time.LocalDate resOut = java.time.LocalDate.parse(outObj.toString());
-                    return resIn.isBefore(searchOut) && resOut.isAfter(searchIn);
-                })
-                .filter(map -> map.get("roomTypeId") != null)
-                .collect(Collectors.groupingBy(map -> Integer.parseInt(map.get("roomTypeId").toString()), Collectors.counting()));
+    /** Only confirmed and checked-in reservations occupy a room; cancelled ones free it. */
+    private boolean holdsARoom(Map<?, ?> reservation) {
+        Object status = reservation.get("status");
+        if (status == null) return false;
+        String st = status.toString();
+        return "CONFIRMED".equalsIgnoreCase(st) || "CHECKEDIN".equalsIgnoreCase(st);
+    }
 
-        java.util.Map<Integer, List<Room>> roomsByType = available.stream()
+    /**
+     * Half-open overlap: a stay ending on the day another begins does not clash, because the
+     * room is turned over that morning.
+     */
+    private boolean overlaps(Map<?, ?> reservation, LocalDate searchIn, LocalDate searchOut) {
+        Object inObj = reservation.get("checkInDate");
+        Object outObj = reservation.get("checkOutDate");
+        if (inObj == null || outObj == null) return false;
+        LocalDate resIn = LocalDate.parse(inObj.toString());
+        LocalDate resOut = LocalDate.parse(outObj.toString());
+        return resIn.isBefore(searchOut) && resOut.isAfter(searchIn);
+    }
+
+    /**
+     * Per room type, drops as many rooms as are already booked. Which specific rooms remain does
+     * not matter — only how many — since a guest books a type and is assigned a room at check-in.
+     */
+    private List<Room> takeUnbookedRooms(List<Room> available, Map<Integer, Long> bookedCounts) {
+        Map<Integer, List<Room>> roomsByType = available.stream()
                 .collect(Collectors.groupingBy(r -> r.getRoomType().getRoomTypeId()));
 
-        List<Room> filtered = new java.util.ArrayList<>();
-        for (var entry : roomsByType.entrySet()) {
-            Integer typeId = entry.getKey();
-            List<Room> typeRooms = entry.getValue();
+        List<Room> remaining = new ArrayList<>();
+        roomsByType.forEach((typeId, typeRooms) -> {
             long booked = bookedCounts.getOrDefault(typeId, 0L);
-            int remainingCount = Math.max(0, (int) (typeRooms.size() - booked));
-            for (int i = 0; i < remainingCount && i < typeRooms.size(); i++) {
-                filtered.add(typeRooms.get(i));
-            }
-        }
-        return filtered.stream().map(this::mapToResponse).collect(Collectors.toList());
+            // Clamped to the list size, so the sublist bound is always valid.
+            int keep = Math.max(0, (int) (typeRooms.size() - booked));
+            remaining.addAll(typeRooms.subList(0, keep));
+        });
+        return remaining;
     }
 
     @Override
@@ -146,6 +186,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public RoomResponse updateRoomStatus(Integer id, RoomStatus status) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + id));

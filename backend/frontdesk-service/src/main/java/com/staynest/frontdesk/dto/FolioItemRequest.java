@@ -16,6 +16,10 @@ public class FolioItemRequest {
     private String description;
     @NotNull @Positive
     private BigDecimal amount;
-    @NotNull
+    /**
+     * Who posted the charge. Optional: the FolioItem column is nullable, and null honestly
+     * records "actor unknown". It was @NotNull, which pushed callers into inventing a user id
+     * (fb-service substituted 1) and quietly mis-attributed the audit trail.
+     */
     private Integer postedBy;
 }

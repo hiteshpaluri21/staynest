@@ -23,6 +23,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.frontdesk.client.HousekeepingServiceClient;
+import com.staynest.frontdesk.client.NotificationServiceClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -33,16 +37,16 @@ public class StayRecordServiceImpl implements StayRecordService {
     private final FolioItemRepository folioItemRepository;
     private final RoomServiceClient roomServiceClient;
     private final ReservationServiceClient reservationServiceClient;
-    private final com.staynest.frontdesk.client.NotificationServiceClient notificationServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
     /** Optional so check-out still works if housekeeping-service is unreachable. */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.staynest.frontdesk.client.HousekeepingServiceClient housekeepingServiceClient;
+    @Autowired(required = false)
+    private HousekeepingServiceClient housekeepingServiceClient;
 
     /** Fire-and-forget notification; a failure here must never fail the primary action. */
     private void notify(Integer userId, String message) {
         if (userId == null) return;
         try {
-            notificationServiceClient.create(java.util.Map.of(
+            notificationServiceClient.create(Map.of(
                     "userId", userId, "category", "FRONTDESK", "message", message));
         } catch (Exception e) {
             log.warn("Failed to send FRONTDESK notification to user {}: {}", userId, e.getMessage());
@@ -57,7 +61,7 @@ public class StayRecordServiceImpl implements StayRecordService {
         Integer guestId = null;
         try {
             var res = reservationServiceClient.getReservationById(request.getReservationId());
-            if (res != null && res.getData() instanceof java.util.Map<?, ?> map) {
+            if (res != null && res.getData() instanceof Map<?, ?> map) {
                 if (map.get("guestId") != null) {
                     guestId = Integer.parseInt(map.get("guestId").toString());
                 }
@@ -181,7 +185,7 @@ public class StayRecordServiceImpl implements StayRecordService {
                 log.warn("No housekeeping assignee supplied at check-out of stay {}; no CHECKOUT task "
                         + "raised for room {} (tasks may not be left unassigned)", stayId, stay.getAssignedRoomId());
             } else {
-                housekeepingServiceClient.createTask(java.util.Map.of(
+                housekeepingServiceClient.createTask(Map.of(
                         "roomId", stay.getAssignedRoomId(),
                         "taskType", "CHECKOUT",
                         "assignedToId", housekeepingStaffId));

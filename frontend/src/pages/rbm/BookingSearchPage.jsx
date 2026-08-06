@@ -124,6 +124,9 @@ export default function BookingSearchPage() {
         <Row>
           {availableTypes.map(({ roomTypeId, type: t, count }) => {
             const fits = !t.maxOccupancy || partySize <= t.maxOccupancy
+            // Without a rate plan valid for these dates there is no price to book at, and
+            // reservation-service now rejects the booking rather than guessing a plan.
+            const hasRate = plansByType(roomTypeId).length > 0
             return (
               <Col md={6} lg={4} key={roomTypeId} className="mb-3">
                 <Card className="h-100 shadow-sm">
@@ -137,8 +140,8 @@ export default function BookingSearchPage() {
                     <div className="small text-muted mb-3">{t.bedConfiguration}</div>
                     <Button
                       size="sm"
-                      disabled={!fits}
-                      style={fits ? { background: '#f59e0b', borderColor: '#f59e0b' } : undefined}
+                      className={fits && hasRate ? 'btn-accent' : undefined}
+                      disabled={!fits || !hasRate}
                       onClick={() => requestBooking({ type: t, availableCount: count })}
                     >
                       Book Now
@@ -146,6 +149,11 @@ export default function BookingSearchPage() {
                     {!fits && (
                       <div className="small text-danger mt-2">
                         Sleeps up to {t.maxOccupancy} guest(s) — you selected {partySize}.
+                      </div>
+                    )}
+                    {fits && !hasRate && (
+                      <div className="small text-warning mt-2">
+                        No rate plan covers these dates yet, so this room can't be booked.
                       </div>
                     )}
                   </Card.Body>

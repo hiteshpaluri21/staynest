@@ -27,13 +27,19 @@ export default function BookingConfirmModal({ data, onClose }) {
     if (!guestId) {
       setError('Your guest profile could not be loaded — please sign in again.'); setSaving(false); return
     }
+    // A booking has to be priced against a real rate plan. This used to be sent as null and
+    // reservation-service silently substituted plan 1, pricing the stay off an unrelated plan.
+    if (!Number(ratePlanId)) {
+      setError('No rate plan is available for these dates, so this room cannot be booked yet.')
+      setSaving(false); return
+    }
     try {
       await createReservation({
         // Must be the reservation-service guestId, not the IAM userId. Sending userId filed the
         // booking under a different, auto-created profile, so it never showed in My Reservations.
         guestId,
         roomTypeId: data.type.roomTypeId,
-        ratePlanId: Number(ratePlanId) || null,
+        ratePlanId: Number(ratePlanId),
         checkInDate: data.checkIn,
         checkOutDate: data.checkOut,
         nights,

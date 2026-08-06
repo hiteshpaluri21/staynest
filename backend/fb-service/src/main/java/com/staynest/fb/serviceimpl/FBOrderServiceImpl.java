@@ -24,6 +24,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.staynest.fb.client.FeignErrors;
+import com.staynest.fb.client.NotificationServiceClient;
+import java.util.ArrayList;
 
 @Slf4j
 @Service
@@ -33,14 +37,14 @@ public class FBOrderServiceImpl implements FBOrderService {
     private final FBOrderRepository orderRepository;
     private final MenuItemRepository menuItemRepository;
     private final FrontDeskServiceClient frontDeskClient;
-    private final com.staynest.fb.client.NotificationServiceClient notificationServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
     private final ObjectMapper objectMapper;
 
     /** Fire-and-forget notification; a failure here must never fail the primary action. */
     private void notify(Integer userId, String message) {
         if (userId == null) return;
         try {
-            notificationServiceClient.create(java.util.Map.of(
+            notificationServiceClient.create(Map.of(
                     "userId", userId, "category", "FB", "message", message));
         } catch (Exception e) {
             log.warn("Failed to send FB notification to user {}: {}", userId, e.getMessage());
@@ -100,9 +104,9 @@ public class FBOrderServiceImpl implements FBOrderService {
         folioItem.put("chargeType", chargeType);
         folioItem.put("description", description);
         folioItem.put("amount", amount);
-        // frontdesk-service rejects a null postedBy; fall back to the system account when the
-        // caller didn't tell us who acted.
-        folioItem.put("postedBy", postedBy != null ? postedBy : 1);
+        // Passed through as-is. Substituting user 1 when the actor was unknown put a false name
+        // on the audit trail; frontdesk-service now accepts null and records "unknown" instead.
+        folioItem.put("postedBy", postedBy);
         try {
             frontDeskClient.postFolioItem(stayId, folioItem);
         } catch (Exception e) {
@@ -206,7 +210,7 @@ public class FBOrderServiceImpl implements FBOrderService {
         } catch (Exception e) {
             // The circuit breaker wraps the downstream 404, so the cause chain has to be walked
             // to tell "no such stay" apart from a genuine frontdesk-service outage.
-            if (com.staynest.fb.client.FeignErrors.isNotFound(e)) {
+            if (FeignErrors.isNotFound(e)) {
                 throw new BadRequestException("Invalid StayId: " + stayId + " (no such stay)");
             }
             log.error("frontdesk-service call failed while validating StayId {}", stayId, e);
@@ -229,7 +233,7 @@ public class FBOrderServiceImpl implements FBOrderService {
         }
         List<Map<String, Object>> items;
         try {
-            items = objectMapper.readValue(itemsJson, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            items = objectMapper.readValue(itemsJson, new TypeReference<List<Map<String, Object>>>() {});
         } catch (Exception e) {
             throw new BadRequestException("Invalid items payload: " + e.getMessage());
         }
@@ -289,13 +293,13 @@ public class FBOrderServiceImpl implements FBOrderService {
         }
         List<Map<String, Object>> lines;
         try {
-            lines = objectMapper.readValue(itemsJson, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            lines = objectMapper.readValue(itemsJson, new TypeReference<List<Map<String, Object>>>() {});
         } catch (Exception e) {
             log.warn("Could not parse itemsJson for order response: {}", e.getMessage());
             return List.of();
         }
 
-        List<FBOrderItemResponse> result = new java.util.ArrayList<>();
+        List<FBOrderItemResponse> result = new ArrayList<>();
         for (Map<String, Object> line : lines) {
             Object rawId = line.get("itemId");
             Object rawQty = line.get("qty");

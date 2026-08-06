@@ -12,10 +12,16 @@ import com.staynest.housekeeping.service.HousekeepingTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.staynest.housekeeping.client.NotificationServiceClient;
+import com.staynest.housekeeping.client.RoomServiceClient;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -23,22 +29,22 @@ import java.util.stream.Collectors;
 public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
 
     private final HousekeepingTaskRepository taskRepository;
-    private final com.staynest.housekeeping.client.NotificationServiceClient notificationServiceClient;
-    private final com.staynest.housekeeping.client.RoomServiceClient roomServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
+    private final RoomServiceClient roomServiceClient;
 
     /**
      * Task types that only make sense while a guest is actually in the room: you cannot clean up
      * after a departure, service a stayover, or turn down a bed in a room nobody is occupying.
      * DEEPCLEAN is deliberately absent — that is scheduled maintenance work on any room.
      */
-    private static final java.util.Set<TaskType> REQUIRES_OCCUPIED_ROOM = java.util.EnumSet.of(
+    private static final Set<TaskType> REQUIRES_OCCUPIED_ROOM = EnumSet.of(
             TaskType.CHECKOUT, TaskType.STAYOVERSERVICE, TaskType.TURNDOWN);
 
     /** Fire-and-forget notification; a failure here must never fail the primary action. */
     private void notify(Integer userId, String message) {
         if (userId == null) return;
         try {
-            notificationServiceClient.create(java.util.Map.of(
+            notificationServiceClient.create(Map.of(
                     "userId", userId, "category", "HOUSEKEEPING", "message", message));
         } catch (Exception e) {
             log.warn("Failed to send HOUSEKEEPING notification to user {}: {}", userId, e.getMessage());
@@ -46,6 +52,7 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
     }
 
     @Override
+    @Transactional
     public HousekeepingTaskResponse createTask(HousekeepingTaskRequest request) {
         validateTaskAppliesToRoom(request.getTaskType(), request.getRoomId());
 
@@ -87,6 +94,7 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
     }
 
     @Override
+    @Transactional
     public HousekeepingTaskResponse assignTask(Integer taskId, Integer staffId) {
         HousekeepingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + taskId));
@@ -103,6 +111,7 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
     }
 
     @Override
+    @Transactional
     public HousekeepingTaskResponse updateTaskStatus(Integer taskId, TaskStatus status) {
         HousekeepingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + taskId));

@@ -8,9 +8,8 @@ spring:
     name: housekeeping-service
   datasource:
     url: jdbc:mysql://localhost:3306/housekeeping_db
-    username: root
-#    password: root12
-    password: root
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -35,5 +34,5 @@ eureka:
     prefer-ip-address: true
 
 jwt:
-  secret: staynest-secret-key-for-jwt-signing-2026
+  secret: ${JWT_SECRET:staynest-secret-key-for-jwt-signing-2026}
   expiration: 86400000

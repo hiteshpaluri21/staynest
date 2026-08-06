@@ -19,6 +19,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
     List<Reservation> findByCheckInDateBetween(LocalDate start, LocalDate end);
     List<Reservation> findByCheckInDateGreaterThanEqual(LocalDate date);
 
+    // Enum literals inside JPQL stay fully qualified — the unqualified form depends on
+    // Hibernate version support, and this must not be version-sensitive.
     @Query("SELECT r FROM Reservation r WHERE r.roomTypeId = :roomTypeId AND r.status IN (com.staynest.reservation.enums.ReservationStatus.CONFIRMED, com.staynest.reservation.enums.ReservationStatus.CHECKEDIN) AND r.checkInDate < :checkOutDate AND r.checkOutDate > :checkInDate")
     List<Reservation> findOverlappingReservations(
             @Param("roomTypeId") Integer roomTypeId,
