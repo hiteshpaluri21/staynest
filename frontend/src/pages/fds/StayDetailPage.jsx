@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Table, Button, Badge, Row, Col } from 'react-bootstrap'
-import { getStayById, getFolioItems, checkOut } from '../../services/fds/stayService'
+import { getStayById, getFolioItems } from '../../services/fds/stayService'
 import { getRooms } from '../../services/ric/roomService'
 import Loader from '../../components/Loader'
 import AddChargeModal from '../../components/AddChargeModal'
+import CheckoutModal from '../../components/CheckoutModal'
 import { statusBadge } from '../../utils/badges'
 
 export default function StayDetailPage() {
@@ -15,6 +16,7 @@ export default function StayDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
   const [editItem, setEditItem] = useState(null)
   // The stay only stores assignedRoomId, so resolve it to the guest-facing room number.
   const [roomNumbers, setRoomNumbers] = useState({})
@@ -35,12 +37,6 @@ export default function StayDetailPage() {
   }
   useEffect(() => { load() }, [stayId])
 
-  const doCheckout = async () => {
-    if (!window.confirm(`Checkout? Total folio: ₹${stay.folioBalance}`)) return
-    try { await checkOut(stayId); navigate('/front-desk') }
-    catch (e) { alert(e.message) }
-  }
-
   if (loading) return <Loader />
   if (error) return <div className="alert alert-danger">{error}</div>
   if (!stay) return null
@@ -51,7 +47,7 @@ export default function StayDetailPage() {
         <h4 className="mb-0">Stay Folio #{stay.stayId} <Badge bg={statusBadge(stay.status)}>{stay.status}</Badge></h4>
         <div>
           <Button variant="outline-primary" className="me-2" disabled={stay.status !== 'ACTIVE'} onClick={() => setShowAdd(true)}>+ Add Charge</Button>
-          <Button variant="danger" disabled={stay.status !== 'ACTIVE'} onClick={doCheckout}>Checkout</Button>
+          <Button variant="danger" disabled={stay.status !== 'ACTIVE'} onClick={() => setShowCheckout(true)}>Checkout</Button>
         </div>
       </div>
       <Row>
@@ -100,6 +96,14 @@ export default function StayDetailPage() {
       </Row>
       <AddChargeModal show={showAdd} stayId={stay.stayId} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />
       <AddChargeModal show={!!editItem} stayId={stay.stayId} item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load() }} />
+      <CheckoutModal
+        show={showCheckout}
+        stay={stay}
+        roomLabel={roomNumbers[stay.assignedRoomId] != null ? `Room ${roomNumbers[stay.assignedRoomId]}` : null}
+        folio={items}
+        onClose={() => setShowCheckout(false)}
+        onDone={() => { setShowCheckout(false); navigate('/front-desk') }}
+      />
     </div>
   )
 }

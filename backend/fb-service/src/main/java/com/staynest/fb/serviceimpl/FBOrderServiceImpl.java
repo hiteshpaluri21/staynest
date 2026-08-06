@@ -13,7 +13,6 @@ import com.staynest.fb.exception.ResourceNotFoundException;
 import com.staynest.fb.repository.FBOrderRepository;
 import com.staynest.fb.repository.MenuItemRepository;
 import com.staynest.fb.service.FBOrderService;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -59,7 +58,6 @@ public class FBOrderServiceImpl implements FBOrderService {
 
         FBOrder order = FBOrder.builder()
                 .stayId(request.getStayId())
-                .tableNumber(request.getTableNumber())
                 .orderType(request.getOrderType())
                 .itemsJson(request.getItemsJson())
                 .totalAmount(totalAmount)
@@ -163,9 +161,12 @@ public class FBOrderServiceImpl implements FBOrderService {
         try {
             var resp = frontDeskClient.getStayById(stayId);
             stay = resp != null ? resp.getData() : null;
-        } catch (FeignException.NotFound e) {
-            throw new BadRequestException("Invalid StayId: " + stayId + " (no such stay)");
         } catch (Exception e) {
+            // The circuit breaker wraps the downstream 404, so the cause chain has to be walked
+            // to tell "no such stay" apart from a genuine frontdesk-service outage.
+            if (com.staynest.fb.client.FeignErrors.isNotFound(e)) {
+                throw new BadRequestException("Invalid StayId: " + stayId + " (no such stay)");
+            }
             log.error("frontdesk-service call failed while validating StayId {}", stayId, e);
             throw new BadRequestException("Unable to validate StayId " + stayId
                     + " (frontdesk-service error: " + e.getMessage() + ")");
@@ -226,7 +227,6 @@ public class FBOrderServiceImpl implements FBOrderService {
         return FBOrderResponse.builder()
                 .orderId(order.getOrderId())
                 .stayId(order.getStayId())
-                .tableNumber(order.getTableNumber())
                 .orderType(order.getOrderType())
                 .itemsJson(order.getItemsJson())
                 .items(buildItemResponses(order.getItemsJson()))

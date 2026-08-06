@@ -9,7 +9,6 @@ import lombok.Data;
 public class FBOrderRequest {
     @NotNull
     private Integer stayId;
-    private String tableNumber;
     @NotNull
     private OrderType orderType;
     @NotBlank

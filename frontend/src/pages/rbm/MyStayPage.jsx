@@ -72,7 +72,6 @@ export default function MyStayPage() {
     try {
       await placeOrder({
         stayId: stay.stayId,
-        tableNumber: '',
         orderType,
         itemsJson: JSON.stringify(cartItems),
         placedBy: user?.userId,

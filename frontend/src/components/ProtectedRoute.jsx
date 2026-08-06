@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 const ROLE_ACCESS = {
   ADMIN: ['*'],
   // /my-reservations is a guest's own booking list, so only GUEST lists it.
-  GUEST: ['/book', '/my-reservations', '/my-stay', '/profile', '/notifications', '/menu', '/rate-plans', '/maintenance'],
+  GUEST: ['/book', '/my-reservations', '/my-stay', '/profile', '/notifications', '/menu', '/rate-plans', '/maintenance', '/dining-reservations'],
   FRONTDESK: ['/book', '/reservations', '/profile', '/notifications', '/front-desk', '/stays', '/stay-records', '/housekeeping'],
   HOUSEKEEPING: ['/book', '/profile', '/notifications', '/housekeeping', '/maintenance'],
   FBMANAGER: ['/book', '/profile', '/notifications', '/menu', '/orders', '/dining-reservations'],

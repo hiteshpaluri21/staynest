@@ -150,7 +150,7 @@ public class StayRecordServiceImpl implements StayRecordService {
 
     @Override
     @Transactional
-    public StayRecordResponse checkOut(Integer stayId) {
+    public StayRecordResponse checkOut(Integer stayId, Integer housekeepingStaffId) {
         StayRecord stay = stayRecordRepository.findById(stayId)
                 .orElseThrow(() -> new ResourceNotFoundException("Stay not found: " + stayId));
 
@@ -169,6 +169,29 @@ public class StayRecordServiceImpl implements StayRecordService {
         stay.setStatus(StayStatus.CHECKEDOUT);
         StayRecord updated = stayRecordRepository.save(stay);
 
+        // Raise the post-checkout cleaning task BEFORE the room is released. A CHECKOUT task only
+        // applies to a room a guest was in, and housekeeping-service enforces that by reading the
+        // room's status — so this has to happen while the room is still OCCUPIED.
+        // Fire-and-forget — a housekeeping outage must not block a guest from checking out.
+        try {
+            if (housekeepingServiceClient == null) {
+                log.warn("housekeeping-service client unavailable; no CHECKOUT task raised for room {}",
+                        stay.getAssignedRoomId());
+            } else if (housekeepingStaffId == null) {
+                log.warn("No housekeeping assignee supplied at check-out of stay {}; no CHECKOUT task "
+                        + "raised for room {} (tasks may not be left unassigned)", stayId, stay.getAssignedRoomId());
+            } else {
+                housekeepingServiceClient.createTask(java.util.Map.of(
+                        "roomId", stay.getAssignedRoomId(),
+                        "taskType", "CHECKOUT",
+                        "assignedToId", housekeepingStaffId));
+                log.info("CHECKOUT housekeeping task raised for room {}, assigned to staff {}",
+                        stay.getAssignedRoomId(), housekeepingStaffId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to raise CHECKOUT housekeeping task for room {}", stay.getAssignedRoomId(), e);
+        }
+
         // Update room status to AVAILABLE
         try {
             roomServiceClient.updateRoomStatus(stay.getAssignedRoomId(), "AVAILABLE");
@@ -181,23 +204,6 @@ public class StayRecordServiceImpl implements StayRecordService {
             reservationServiceClient.updateReservationStatus(stay.getReservationId(), "CHECKEDOUT");
         } catch (Exception e) {
             log.warn("Failed to update reservation status: {}", e.getMessage());
-        }
-
-        // Raise the post-checkout cleaning task. Unassigned on purpose: front desk picks the
-        // housekeeping staff member afterwards, the same way as any other assignment.
-        // Fire-and-forget — a housekeeping outage must not block a guest from checking out.
-        try {
-            if (housekeepingServiceClient != null) {
-                housekeepingServiceClient.createTask(java.util.Map.of(
-                        "roomId", stay.getAssignedRoomId(),
-                        "taskType", "CHECKOUT"));
-                log.info("CHECKOUT housekeeping task raised for room {}", stay.getAssignedRoomId());
-            } else {
-                log.warn("housekeeping-service client unavailable; no CHECKOUT task raised for room {}",
-                        stay.getAssignedRoomId());
-            }
-        } catch (Exception e) {
-            log.error("Failed to raise CHECKOUT housekeeping task for room {}", stay.getAssignedRoomId(), e);
         }
 
         notify(stay.getGuestId(), "You have been checked out. Final folio total: " + total + ".");

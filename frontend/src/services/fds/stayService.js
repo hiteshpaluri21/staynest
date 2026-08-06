@@ -45,4 +45,6 @@ export const updateFolioItem = (stayId, folioItemId, data) => request(`${BASE_UR
 
 export const getFolioItems = (stayId) => request(`/api/folio-items/stay/${stayId}`)
 
-export const checkOut = (stayId) => request(`${BASE_URL}/${stayId}/checkout`, { method: 'POST' })
+// housekeepingStaffId owns the post-checkout cleaning task raised automatically by the backend.
+export const checkOut = (stayId, housekeepingStaffId) =>
+  request(`${BASE_URL}/${stayId}/checkout${toQuery({ housekeepingStaffId })}`, { method: 'POST' })
