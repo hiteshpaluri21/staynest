@@ -117,9 +117,11 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const signedIn = isAuthenticated && !loading
 
+  // Already on the landing page, so this just clears the session and lets the header
+  // swap the account chip back to "Log in".
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/')
   }
 
   /*

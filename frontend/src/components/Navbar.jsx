@@ -10,9 +10,12 @@ export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  // Signing out drops you on the public hotel site, not the staff sign-in form —
+  // leaving the app should look like leaving, with a way back in rather than a
+  // login prompt you did not ask for.
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/')
   }
 
   return (
