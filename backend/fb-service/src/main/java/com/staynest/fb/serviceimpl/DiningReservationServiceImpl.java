@@ -65,6 +65,30 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         return mapToResponse(updated);
     }
 
+    /**
+     * Guests cancel their own bookings through this, so it deliberately does not go through
+     * {@link #updateReservationStatus} (staff-only). Only a booking that has not been seated yet
+     * can be cancelled — once the party is at the table, F&B closes it out as COMPLETED instead.
+     */
+    @Override
+    public DiningReservationResponse cancelReservation(Integer id) {
+        DiningReservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dining reservation not found: " + id));
+
+        if (reservation.getStatus() == DiningResStatus.CANCELLED) {
+            throw new BadRequestException("Dining reservation " + id + " is already cancelled");
+        }
+        if (reservation.getStatus() != DiningResStatus.CONFIRMED) {
+            throw new BadRequestException("Only a CONFIRMED reservation can be cancelled. "
+                    + "Reservation " + id + " is " + reservation.getStatus());
+        }
+
+        reservation.setStatus(DiningResStatus.CANCELLED);
+        DiningReservation updated = reservationRepository.save(reservation);
+        log.info("Dining reservation {} cancelled", id);
+        return mapToResponse(updated);
+    }
+
     @Override
     public DiningReservationResponse getReservationById(Integer id) {
         DiningReservation reservation = reservationRepository.findById(id)

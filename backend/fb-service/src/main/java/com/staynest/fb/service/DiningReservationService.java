@@ -10,6 +10,7 @@ import java.util.List;
 public interface DiningReservationService {
     DiningReservationResponse createReservation(DiningReservationRequest request);
     DiningReservationResponse updateReservationStatus(Integer id, DiningResStatus status);
+    DiningReservationResponse cancelReservation(Integer id);
     DiningReservationResponse getReservationById(Integer id);
     List<DiningReservationResponse> getAllReservations();
     List<DiningReservationResponse> getReservationsByGuestId(Integer guestId);

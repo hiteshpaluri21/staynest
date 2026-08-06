@@ -3,11 +3,12 @@ import { Card, Row, Col, Table, Badge, Form, Button, Alert } from 'react-bootstr
 import { getStays, getFolioItems } from '../../services/fds/stayService'
 import { getRooms } from '../../services/ric/roomService'
 import { getMenuItems } from '../../services/fbm/menuService'
-import { getOrders, placeOrder } from '../../services/fbm/orderService'
+import { getOrders, placeOrder, cancelOrder } from '../../services/fbm/orderService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import RequestServiceModal from '../../components/RequestServiceModal'
+import ConfirmModal from '../../components/ConfirmModal'
 import { statusBadge } from '../../utils/badges'
 
 const MENU_CATEGORIES = ['BREAKFAST', 'MAINCOURSE', 'BEVERAGE', 'DESSERT']
@@ -27,6 +28,8 @@ export default function MyStayPage() {
   const [submitErr, setSubmitErr] = useState('')
   const [submitOk, setSubmitOk] = useState('')
   const [showAddCharge, setShowAddCharge] = useState(false)
+  // The order awaiting cancel confirmation, or null when the modal is closed.
+  const [pendingCancel, setPendingCancel] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -66,6 +69,23 @@ export default function MyStayPage() {
     return sum + (m ? Number(m.price) * ci.qty : 0)
   }, 0), [cart, menu])
 
+  /**
+   * Placing an order posts an FBCHARGE straight to the folio, so the stay itself (which carries the
+   * Current Bill) and the folio table have to be refetched — not just the order list. Deliberately
+   * avoids load() so the success alert isn't torn down by the page-level loading state.
+   */
+  const refreshBill = async () => {
+    const [stays, f, os] = await Promise.all([
+      getStays({ guestId }).catch(() => []),
+      getFolioItems(stay.stayId).catch(() => []),
+      getOrders({ stayId: stay.stayId }).catch(() => []),
+    ])
+    const current = (stays || []).find(s => s.stayId === stay.stayId)
+    if (current) setStay(current)
+    setFolio(f || [])
+    setOrders(os || [])
+  }
+
   const submitOrder = async (e) => {
     e.preventDefault(); setSubmitErr(''); setSubmitOk('')
     if (cartItems.length === 0) { setSubmitErr('Select at least one item'); return }
@@ -76,10 +96,19 @@ export default function MyStayPage() {
         itemsJson: JSON.stringify(cartItems),
         placedBy: user?.userId,
       })
-      setCart({}); setSubmitOk('Order placed! You can track it below.')
-      const os = await getOrders({ stayId: stay.stayId }).catch(() => [])
-      setOrders(os || [])
+      setCart({}); setSubmitOk('Order placed and added to your bill. You can track it below.')
+      await refreshBill()
     } catch (err) { setSubmitErr(err.message) }
+  }
+
+  // Cancelling reverses the charge off the folio, so the bill has to be refetched here too. Errors
+  // propagate to ConfirmModal, which shows them inline and keeps itself open for a retry.
+  const confirmCancel = async () => {
+    const orderId = pendingCancel.orderId
+    setSubmitErr(''); setSubmitOk('')
+    await cancelOrder(orderId)
+    setSubmitOk(`Order #${orderId} cancelled and removed from your bill.`)
+    await refreshBill()
   }
 
   if (loading) return <Loader />
@@ -146,9 +175,9 @@ export default function MyStayPage() {
                 <Row className="mb-2">
                   <Col md={6}>
                     <Form.Label className="small">Order Type</Form.Label>
+                    {/* No dine-in here — to eat at an outlet, book a table under Dining Reservations. */}
                     <Form.Select value={orderType} onChange={e => setOrderType(e.target.value)}>
                       <option value="INROOMDINING">In-Room Dining</option>
-                      <option value="DINEIN">Dine-In</option>
                       <option value="TAKEAWAY">Takeaway</option>
                     </Form.Select>
                   </Col>
@@ -184,7 +213,7 @@ export default function MyStayPage() {
             <Card.Body>
               {orders.length === 0 ? <EmptyState message="No orders yet" /> :
                 <Table hover size="sm" className="mb-0">
-                  <thead><tr><th>ID</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.orderId}>
@@ -195,6 +224,13 @@ export default function MyStayPage() {
                         </td>
                         <td>₹{o.totalAmount}</td>
                         <td><Badge bg={statusBadge(o.status)}>{o.status}</Badge></td>
+                        <td>
+                          {/* Only while the kitchen hasn't started, and only before check-out — the
+                              folio won't accept a reversal against a closed stay. */}
+                          {o.status === 'PLACED' && stay.status === 'ACTIVE'
+                            ? <Button size="sm" variant="outline-danger" onClick={() => setPendingCancel(o)}>Cancel</Button>
+                            : <span className="text-muted small">—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -210,6 +246,20 @@ export default function MyStayPage() {
         stayId={stay.stayId}
         onClose={() => setShowAddCharge(false)}
         onSaved={() => { setShowAddCharge(false); load() }}
+      />
+
+      <ConfirmModal
+        show={pendingCancel != null}
+        title="Cancel order"
+        body={pendingCancel && (
+          <p className="mb-0">
+            Cancel order #{pendingCancel.orderId}? The ₹{pendingCancel.totalAmount} charge will be
+            taken off your bill.
+          </p>
+        )}
+        confirmLabel="Cancel order"
+        onClose={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
       />
     </div>
   )

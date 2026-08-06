@@ -56,4 +56,12 @@ public class DiningReservationController {
             @RequestParam DiningResStatus status) {
         return ResponseEntity.ok(ApiResponse.success(reservationService.updateReservationStatus(id, status)));
     }
+
+    // A guest booked the table, so a guest can call it off — seating and completing stay staff-only,
+    // which is why cancelling is its own endpoint rather than part of the status transition above.
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER', 'GUEST')")
+    public ResponseEntity<ApiResponse<DiningReservationResponse>> cancel(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success("Reservation cancelled", reservationService.cancelReservation(id)));
+    }
 }

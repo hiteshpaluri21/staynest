@@ -8,6 +8,7 @@ import { getGuestById } from '../../services/rbm/guestService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
+import ConfirmModal from '../../components/ConfirmModal'
 import { statusBadge } from '../../utils/badges'
 
 const NEXT = { PLACED: 'PREPARING', PREPARING: 'SERVED', SERVED: 'BILLED' }
@@ -21,9 +22,12 @@ export default function FBOrderPage() {
   const [activeStays, setActiveStays] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ stayId: '', orderType: 'DINEIN', cart: {} })
+  const [form, setForm] = useState({ stayId: '', orderType: 'INROOMDINING', cart: {} })
   const [menuCat, setMenuCat] = useState('BREAKFAST')
   const [submitErr, setSubmitErr] = useState('')
+  const [actionErr, setActionErr] = useState('')
+  // The order awaiting cancel confirmation, or null when the modal is closed.
+  const [pendingCancel, setPendingCancel] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -82,13 +86,22 @@ export default function FBOrderPage() {
         itemsJson: JSON.stringify(cartItems),
         placedBy: user?.userId,
       })
-      setForm({ stayId: '', orderType: 'DINEIN', cart: {} })
+      setForm({ stayId: '', orderType: 'INROOMDINING', cart: {} })
       load()
     } catch (err) { setSubmitErr(err.message) }
   }
 
-  const advance = async (id, status) => { try { await updateOrderStatus(id, status); load() } catch (e) { alert(e.message) } }
-  const cancel = async (id) => { try { await cancelOrder(id); load() } catch (e) { alert(e.message) } }
+  // Action failures land in an inline alert above the order table rather than a native dialog.
+  const advance = async (id, status) => {
+    setActionErr('')
+    try { await updateOrderStatus(id, status); load() } catch (e) { setActionErr(e.message) }
+  }
+
+  // Confirmed in-app via ConfirmModal, which surfaces its own errors and reloads on success.
+  const confirmCancel = async () => {
+    await cancelOrder(pendingCancel.orderId)
+    await load()
+  }
 
   return (
     <div>
@@ -116,9 +129,9 @@ export default function FBOrderPage() {
                     ))}
                   </Form.Select>
                 </Form.Group>
+                {/* No dine-in here — eating at an outlet is booked on the Dining Reservations page. */}
                 <Form.Group className="mb-3"><Form.Label>Order Type</Form.Label>
                   <Form.Select value={form.orderType} onChange={e => setForm(f => ({ ...f, orderType: e.target.value }))}>
-                    <option value="DINEIN">Dine-In</option>
                     <option value="INROOMDINING">In-Room Dining</option>
                     <option value="TAKEAWAY">Takeaway</option>
                   </Form.Select>
@@ -153,6 +166,7 @@ export default function FBOrderPage() {
           <Card className="shadow-sm">
             <Card.Header className="bg-white"><strong>Active Orders</strong></Card.Header>
             <Card.Body>
+              {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
               {loading ? <Loader /> : orders.length === 0 ? <EmptyState /> :
                 <Table hover size="sm">
                   <thead><tr><th>ID</th><th>Guest</th><th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
@@ -171,7 +185,7 @@ export default function FBOrderPage() {
                         <td><Badge bg={statusBadge(o.status)}>{o.status}</Badge></td>
                         <td>
                           {NEXT[o.status] && <Button size="sm" variant="outline-primary" className="me-1" onClick={() => advance(o.orderId, NEXT[o.status])}>→ {NEXT[o.status]}</Button>}
-                          {o.status === 'PLACED' && <Button size="sm" variant="outline-danger" onClick={() => cancel(o.orderId)}>Cancel</Button>}
+                          {o.status === 'PLACED' && <Button size="sm" variant="outline-danger" onClick={() => { setActionErr(''); setPendingCancel(o) }}>Cancel</Button>}
                         </td>
                       </tr>
                     ))}
@@ -182,6 +196,21 @@ export default function FBOrderPage() {
           </Card>
         </Col>
       </Row>
+
+      <ConfirmModal
+        show={pendingCancel != null}
+        title="Cancel order"
+        body={pendingCancel && (
+          <p className="mb-0">
+            Cancel order #{pendingCancel.orderId} for{' '}
+            <strong>{stayLabels[pendingCancel.stayId] ?? `Stay #${pendingCancel.stayId}`}</strong>?
+            {' '}The ₹{pendingCancel.totalAmount} charge will be taken back off the guest's bill.
+          </p>
+        )}
+        confirmLabel="Cancel order"
+        onClose={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
+      />
     </div>
   )
 }

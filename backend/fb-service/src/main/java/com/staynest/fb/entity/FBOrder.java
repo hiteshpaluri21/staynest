@@ -38,6 +38,10 @@ public class FBOrder {
     @Column(name = "TotalAmount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    /** Who placed the order — attributes the folio charge and its reversal on cancellation. */
+    @Column(name = "PlacedBy")
+    private Integer placedBy;
+
     @CreationTimestamp
     @Column(name = "OrderTime", updatable = false)
     private LocalDateTime orderTime;

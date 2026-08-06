@@ -8,6 +8,7 @@ import com.staynest.fb.dto.FBOrderResponse;
 import com.staynest.fb.entity.FBOrder;
 import com.staynest.fb.entity.MenuItem;
 import com.staynest.fb.enums.OrderStatus;
+import com.staynest.fb.enums.OrderType;
 import com.staynest.fb.exception.BadRequestException;
 import com.staynest.fb.exception.ResourceNotFoundException;
 import com.staynest.fb.repository.FBOrderRepository;
@@ -49,6 +50,14 @@ public class FBOrderServiceImpl implements FBOrderService {
     @Override
     @Transactional
     public FBOrderResponse placeOrder(FBOrderRequest request) {
+        // Eating at an outlet is booked through dining reservations, so an F&B order is only ever
+        // in-room dining or takeaway. Rejected here as well as hidden in the UI, so a stale client
+        // can't keep creating DINEIN orders.
+        if (request.getOrderType() == OrderType.DINEIN) {
+            throw new BadRequestException("Dine-in orders are not accepted here — "
+                    + "book a table through dining reservations instead");
+        }
+
         // An order must be attached to a real stay — reject unknown/invalid stayIds instead of
         // silently creating orphaned orders.
         validateStay(request.getStayId());
@@ -61,13 +70,46 @@ public class FBOrderServiceImpl implements FBOrderService {
                 .orderType(request.getOrderType())
                 .itemsJson(request.getItemsJson())
                 .totalAmount(totalAmount)
+                .placedBy(request.getPlacedBy())
                 .build();
 
         FBOrder saved = orderRepository.save(order);
-        log.info("Order placed: {}", saved.getOrderId());
+
+        // The charge hits the folio at placement, so the guest's Current Bill reflects the order
+        // straight away instead of only once staff have walked it through to BILLED.
+        postFolio(saved.getStayId(), "FBCHARGE", "F&B Order: " + saved.getOrderId(),
+                totalAmount, saved.getPlacedBy());
+
+        log.info("Order placed: {} — {} charged to folio for stay {}",
+                saved.getOrderId(), totalAmount, saved.getStayId());
         notify(request.getPlacedBy(), "Your F&B order #" + saved.getOrderId()
-                + " has been placed. Total: " + totalAmount + ".");
+                + " has been placed. Total: " + totalAmount + ", added to your bill.");
         return mapToResponse(saved);
+    }
+
+    /**
+     * Posts a line to the stay's folio in frontdesk-service. Unlike {@link #notify}, a failure is
+     * fatal rather than swallowed: an order we could not charge must not survive, so the exception
+     * propagates and the surrounding transaction rolls the order back. Placing an order already
+     * requires frontdesk-service to be reachable (see {@link #validateStay}), so this adds no new
+     * dependency.
+     */
+    private void postFolio(Integer stayId, String chargeType, String description,
+                           BigDecimal amount, Integer postedBy) {
+        Map<String, Object> folioItem = new HashMap<>();
+        folioItem.put("chargeType", chargeType);
+        folioItem.put("description", description);
+        folioItem.put("amount", amount);
+        // frontdesk-service rejects a null postedBy; fall back to the system account when the
+        // caller didn't tell us who acted.
+        folioItem.put("postedBy", postedBy != null ? postedBy : 1);
+        try {
+            frontDeskClient.postFolioItem(stayId, folioItem);
+        } catch (Exception e) {
+            log.error("Failed to post {} of {} to the folio for stay {}", chargeType, amount, stayId, e);
+            throw new BadRequestException("Unable to post the charge to the guest's folio "
+                    + "(frontdesk-service error: " + e.getMessage() + ")");
+        }
     }
 
     @Override
@@ -84,19 +126,9 @@ public class FBOrderServiceImpl implements FBOrderService {
         order.setStatus(status);
         FBOrder updated = orderRepository.save(order);
 
-        // If BILLED, post to folio
-        if (status == OrderStatus.BILLED) {
-            try {
-                Map<String, Object> folioItem = new HashMap<>();
-                folioItem.put("chargeType", "FBCHARGE");
-                folioItem.put("description", "F&B Order: " + order.getOrderId());
-                folioItem.put("amount", order.getTotalAmount());
-                folioItem.put("postedBy", 1); // Should come from auth context
-                frontDeskClient.postFolioItem(order.getStayId(), folioItem);
-            } catch (Exception e) {
-                log.warn("Failed to post to folio: {}", e.getMessage());
-            }
-        }
+        // No folio posting here: the charge already went on the folio when the order was placed,
+        // so posting again at BILLED would charge the guest twice. BILLED now just records that
+        // the kitchen is done and the charge has been settled.
 
         log.info("Order {} status updated to {}", orderId, status);
         return mapToResponse(updated);
@@ -114,7 +146,17 @@ public class FBOrderServiceImpl implements FBOrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         FBOrder updated = orderRepository.save(order);
-        log.info("Order {} cancelled", orderId);
+
+        // The charge went on at placement, so cancelling has to take it back off the bill. Folio
+        // lines are an audit trail and are never deleted, so the reversal is a DISCOUNT line for
+        // the same amount — signedAmount() in frontdesk-service subtracts it from the balance.
+        postFolio(order.getStayId(), "DISCOUNT", "Reversal: F&B Order " + order.getOrderId(),
+                order.getTotalAmount(), order.getPlacedBy());
+
+        log.info("Order {} cancelled — {} reversed off the folio for stay {}",
+                orderId, order.getTotalAmount(), order.getStayId());
+        notify(order.getPlacedBy(), "Your F&B order #" + orderId + " was cancelled. "
+                + order.getTotalAmount() + " has been taken off your bill.");
         return mapToResponse(updated);
     }
 

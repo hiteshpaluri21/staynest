@@ -54,8 +54,10 @@ public class FBOrderController {
         return ResponseEntity.ok(ApiResponse.success(orderService.updateOrderStatus(id, status)));
     }
 
+    // A guest can call off their own order, same as a dining reservation. cancelOrder() only allows
+    // this while the order is still PLACED — once the kitchen has started, staff handle it.
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER', 'FRONTDESK')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER', 'FRONTDESK', 'GUEST')")
     public ResponseEntity<ApiResponse<FBOrderResponse>> cancel(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success("Order cancelled", orderService.cancelOrder(id)));
     }

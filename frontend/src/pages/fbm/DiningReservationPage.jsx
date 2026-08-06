@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Table, Button, Badge, Form, Modal, Alert, Row, Col } from 'react-bootstrap'
-import { getDiningReservations, createDiningReservation, updateDiningStatus } from '../../services/fbm/diningService'
+import { getDiningReservations, createDiningReservation, updateDiningStatus, cancelDiningReservation } from '../../services/fbm/diningService'
 import { getStays } from '../../services/fds/stayService'
 import { getGuestById } from '../../services/rbm/guestService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
+import ConfirmModal from '../../components/ConfirmModal'
 import { statusBadge } from '../../utils/badges'
 
 const OUTLETS = ['The Garden Bistro', 'Sky Lounge', 'Poolside Bar', 'Rooftop Grill']
@@ -26,6 +27,9 @@ export default function DiningReservationPage() {
   const [form, setForm] = useState({ restaurantOutlet: OUTLETS[0], date: '', time: '19:00', covers: 2 })
   const [saveErr, setSaveErr] = useState('')
   const [dateFilter, setDateFilter] = useState('')
+  const [actionErr, setActionErr] = useState('')
+  // The reservation awaiting cancel confirmation, or null when the modal is closed.
+  const [pendingCancel, setPendingCancel] = useState(null)
   // The guest's open stay, if any — attached to the booking so F&B can tie it back to the room.
   const [activeStayId, setActiveStayId] = useState(null)
 
@@ -70,7 +74,18 @@ export default function DiningReservationPage() {
     } catch (err) { setSaveErr(err.message) }
   }
 
-  const setStatus = async (id, status) => { try { await updateDiningStatus(id, status); load() } catch (e) { alert(e.message) } }
+  // Action failures land in an inline alert above the table rather than a native dialog. `error` is
+  // not reused for these — it replaces the whole table, which would hide the row just acted on.
+  const setStatus = async (id, status) => {
+    setActionErr('')
+    try { await updateDiningStatus(id, status); load() } catch (e) { setActionErr(e.message) }
+  }
+
+  // Confirmed in-app via ConfirmModal; it surfaces its own errors and reloads on success.
+  const confirmCancel = async () => {
+    await cancelDiningReservation(pendingCancel.diningResId)
+    await load()
+  }
 
   const guestLabel = (id) => guestNames[id] ?? `Guest #${id}`
 
@@ -85,10 +100,11 @@ export default function DiningReservationPage() {
       {!isGuest && (
         <Form.Control type="date" style={{ maxWidth: 200 }} className="mb-3" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
       )}
+      {actionErr && <Alert variant="danger" dismissible onClose={() => setActionErr('')} className="py-2">{actionErr}</Alert>}
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         items.length === 0 ? <EmptyState message={isGuest ? 'You have no dining reservations' : 'No dining reservations'} /> :
         <Table hover responsive className="align-middle">
-          <thead><tr><th>ID</th>{!isGuest && <th>Guest</th>}<th>Outlet</th><th>Date</th><th>Time</th><th>Covers</th><th>Status</th>{!isGuest && <th>Action</th>}</tr></thead>
+          <thead><tr><th>ID</th>{!isGuest && <th>Guest</th>}<th>Outlet</th><th>Date</th><th>Time</th><th>Covers</th><th>Status</th><th>Action</th></tr></thead>
           <tbody>
             {items.map(d => (
               <tr key={d.diningResId}>
@@ -99,17 +115,33 @@ export default function DiningReservationPage() {
                 <td>{d.time}</td>
                 <td>{d.covers}</td>
                 <td><Badge bg={statusBadge(d.status)}>{d.status}</Badge></td>
-                {!isGuest && (
-                  <td>
-                    {d.status === 'CONFIRMED' && <Button size="sm" variant="outline-success" onClick={() => setStatus(d.diningResId, 'SEATED')}>Seat</Button>}
-                    {d.status === 'SEATED' && <Button size="sm" variant="outline-primary" onClick={() => setStatus(d.diningResId, 'COMPLETED')}>Complete</Button>}
-                  </td>
-                )}
+                <td>
+                  {/* Seating and completing are staff actions; cancelling is open to the guest who
+                      booked the table, and only while it is still CONFIRMED. */}
+                  {!isGuest && d.status === 'CONFIRMED' && <Button size="sm" variant="outline-success" className="me-1" onClick={() => setStatus(d.diningResId, 'SEATED')}>Seat</Button>}
+                  {!isGuest && d.status === 'SEATED' && <Button size="sm" variant="outline-primary" onClick={() => setStatus(d.diningResId, 'COMPLETED')}>Complete</Button>}
+                  {d.status === 'CONFIRMED' && <Button size="sm" variant="outline-danger" onClick={() => { setActionErr(''); setPendingCancel(d) }}>Cancel</Button>}
+                  {d.status !== 'CONFIRMED' && d.status !== 'SEATED' && <span className="text-muted small">—</span>}
+                </td>
               </tr>
             ))}
           </tbody>
         </Table>
       }
+
+      <ConfirmModal
+        show={pendingCancel != null}
+        title="Cancel dining reservation"
+        body={pendingCancel && (
+          <p className="mb-0">
+            Cancel the table for {pendingCancel.covers} at <strong>{pendingCancel.restaurantOutlet}</strong>
+            {' '}on {pendingCancel.date} at {pendingCancel.time}? This cannot be undone.
+          </p>
+        )}
+        confirmLabel="Cancel reservation"
+        onClose={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
+      />
 
       <Modal show={show} onHide={() => setShow(false)}>
         <Modal.Header closeButton><Modal.Title>New Dining Reservation</Modal.Title></Modal.Header>
