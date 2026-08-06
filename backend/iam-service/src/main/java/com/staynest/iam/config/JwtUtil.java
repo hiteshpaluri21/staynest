@@ -24,10 +24,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String email, String role) {
+    /**
+     * The userId claim is what lets every other service attribute an audit entry to a real
+     * person. Without it a service only knows the caller's email and role, which is why
+     * audit rows and folio postings previously had to guess at the actor.
+     */
+    public String generateToken(String email, String role, Integer userId) {
         return Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
+                .claim("userId", userId)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -49,6 +55,18 @@ public class JwtUtil {
 
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
+    }
+
+    /**
+     * The acting user's IAM id. Carried as a claim so every service can attribute
+     * audit entries to a real person rather than guessing.
+     *
+     * Returns null for tokens minted before this claim existed, so callers must
+     * tolerate an unknown actor rather than assuming one.
+     */
+    public Integer extractUserId(String token) {
+        Object raw = getClaims(token).get("userId");
+        return raw instanceof Number n ? n.intValue() : null;
     }
 
     private Claims getClaims(String token) {

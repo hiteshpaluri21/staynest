@@ -1,5 +1,6 @@
 package com.staynest.frontdesk.serviceimpl;
 
+import com.staynest.frontdesk.audit.AuditRecorder;
 import com.staynest.frontdesk.dto.FolioItemRequest;
 import com.staynest.frontdesk.entity.FolioItem;
 import com.staynest.frontdesk.entity.StayRecord;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.when;
 class FolioItemServiceImplTest {
 
     @Mock private FolioItemRepository folioItemRepository;
+    @Mock private AuditRecorder auditRecorder;
     @Mock private StayRecordRepository stayRecordRepository;
     @InjectMocks private FolioItemServiceImpl service;
 

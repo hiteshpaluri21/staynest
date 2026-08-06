@@ -1,5 +1,6 @@
 package com.staynest.room.serviceimpl;
 
+import com.staynest.room.audit.AuditRecorder;
 import com.staynest.room.dto.RatePlanRequest;
 import com.staynest.room.dto.RatePlanResponse;
 import com.staynest.room.entity.RatePlan;
@@ -24,6 +25,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RatePlanServiceImpl implements RatePlanService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "RATEPLAN";
+
+    private final AuditRecorder auditRecorder;
+
     private final RatePlanRepository ratePlanRepository;
     private final RoomTypeRepository roomTypeRepository;
 
@@ -40,6 +46,7 @@ public class RatePlanServiceImpl implements RatePlanService {
 
         RatePlan saved = ratePlanRepository.save(ratePlan);
         log.info("RatePlan created: {}", saved.getRatePlanId());
+        auditRecorder.record("CREATE", ENTITY, saved.getRatePlanId());
         return mapToResponse(saved);
     }
 
@@ -56,6 +63,7 @@ public class RatePlanServiceImpl implements RatePlanService {
 
         RatePlan updated = ratePlanRepository.save(ratePlan);
         log.info("RatePlan {} updated", id);
+        auditRecorder.record("UPDATE", ENTITY, id);
         return mapToResponse(updated);
     }
 
@@ -69,6 +77,7 @@ public class RatePlanServiceImpl implements RatePlanService {
         // Deactivating is the safer option for a plan already sold; deleting is for one created
         // by mistake.
         log.warn("RatePlan {} deleted — existing reservations referencing it will keep the id", id);
+        auditRecorder.record("DELETE", ENTITY, id);
     }
 
     @Override
@@ -96,6 +105,7 @@ public class RatePlanServiceImpl implements RatePlanService {
         ratePlan.setStatus(status);
         RatePlan updated = ratePlanRepository.save(ratePlan);
         log.info("RatePlan {} status updated to {}", id, status);
+        auditRecorder.record("UPDATE_STATUS", ENTITY, id);
         return mapToResponse(updated);
     }
 

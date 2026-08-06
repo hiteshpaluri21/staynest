@@ -1,5 +1,6 @@
 package com.staynest.room.serviceimpl;
 
+import com.staynest.room.audit.AuditRecorder;
 import com.staynest.room.dto.RatePlanRequest;
 import com.staynest.room.entity.RatePlan;
 import com.staynest.room.entity.RoomType;
@@ -40,6 +41,7 @@ import static org.mockito.Mockito.when;
 class RatePlanServiceImplTest {
 
     @Mock private RatePlanRepository ratePlanRepository;
+    @Mock private AuditRecorder auditRecorder;
     @Mock private RoomTypeRepository roomTypeRepository;
     @InjectMocks private RatePlanServiceImpl service;
 

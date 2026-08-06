@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UserListPage from './pages/iam/UserListPage'
+import AuditLogPage from './pages/iam/AuditLogPage'
 import RoomTypePage from './pages/ric/RoomTypePage'
 import RoomListPage from './pages/ric/RoomListPage'
 import RatePlanPage from './pages/ric/RatePlanPage'
@@ -40,11 +41,14 @@ export default function App() {
       <Route path="/unauthorized" element={<div className="p-5 text-center"><h3>403 — Unauthorized</h3></div>} />
 
       <Route path="/users" element={withLayout(['ADMIN'], <UserListPage />)} />
+      <Route path="/audit-logs" element={withLayout(['ADMIN'], <AuditLogPage />)} />
       <Route path="/room-types" element={withLayout(['ADMIN'], <RoomTypePage />)} />
       <Route path="/rooms" element={withLayout(['ADMIN'], <RoomListPage />)} />
       <Route path="/rate-plans" element={withLayout(['ADMIN', 'GUEST'], <RatePlanPage />)} />
 
-      <Route path="/book" element={withLayout(['GUEST', 'ADMIN'], <BookingSearchPage />)} />
+      {/* Guest-only, strict: an admin administers the hotel, they do not book rooms in it.
+          Admins see every booking on /reservations instead. */}
+      <Route path="/book" element={withLayout(['GUEST'], <BookingSearchPage />, { strict: true })} />
       {/* Guest-only, strict: admins use /reservations, which shows the same data for everyone. */}
       <Route path="/my-reservations" element={withLayout(['GUEST'], <MyReservationsPage />, { strict: true })} />
       <Route path="/my-stay" element={withLayout(['GUEST'], <MyStayPage />)} />

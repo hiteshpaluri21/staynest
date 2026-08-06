@@ -51,6 +51,18 @@ public class JwtUtil {
         return getClaims(token).get("role", String.class);
     }
 
+    /**
+     * The acting user's IAM id. Carried as a claim so every service can attribute
+     * audit entries to a real person rather than guessing.
+     *
+     * Returns null for tokens minted before this claim existed, so callers must
+     * tolerate an unknown actor rather than assuming one.
+     */
+    public Integer extractUserId(String token) {
+        Object raw = getClaims(token).get("userId");
+        return raw instanceof Number n ? n.intValue() : null;
+    }
+
     private Claims getClaims(String token) {
         return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
     }

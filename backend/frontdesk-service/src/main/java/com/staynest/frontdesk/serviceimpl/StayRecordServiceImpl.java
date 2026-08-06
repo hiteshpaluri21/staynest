@@ -1,5 +1,6 @@
 package com.staynest.frontdesk.serviceimpl;
 
+import com.staynest.frontdesk.audit.AuditRecorder;
 import com.staynest.frontdesk.client.ReservationServiceClient;
 import com.staynest.frontdesk.client.RoomServiceClient;
 import com.staynest.frontdesk.dto.CheckInRequest;
@@ -33,6 +34,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StayRecordServiceImpl implements StayRecordService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "STAY";
+
+    private final AuditRecorder auditRecorder;
     private final StayRecordRepository stayRecordRepository;
     private final FolioItemRepository folioItemRepository;
     private final RoomServiceClient roomServiceClient;
@@ -117,6 +122,7 @@ public class StayRecordServiceImpl implements StayRecordService {
         notify(guestId, "Welcome! You are checked in to room #" + request.getRoomId() + ".");
 
         log.info("Check-in completed for reservation: {}", request.getReservationId());
+        auditRecorder.record("CHECKIN", ENTITY, saved.getStayId());
         return mapToResponse(saved);
     }
 
@@ -149,6 +155,7 @@ public class StayRecordServiceImpl implements StayRecordService {
                 + ") was posted to your folio.");
 
         log.info("Folio item posted for stay: {}, amount: {}", stayId, request.getAmount());
+        auditRecorder.record("POST_CHARGE", ENTITY, stayId);
         return mapToResponse(updated);
     }
 
@@ -213,6 +220,7 @@ public class StayRecordServiceImpl implements StayRecordService {
         notify(stay.getGuestId(), "You have been checked out. Final folio total: " + total + ".");
 
         log.info("Check-out completed for stay: {}, total folio: {}", stayId, total);
+        auditRecorder.record("CHECKOUT", ENTITY, stayId);
         return mapToResponse(updated);
     }
 

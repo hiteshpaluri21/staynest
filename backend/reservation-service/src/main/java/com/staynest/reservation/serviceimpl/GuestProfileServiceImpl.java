@@ -1,5 +1,6 @@
 package com.staynest.reservation.serviceimpl;
 
+import com.staynest.reservation.audit.AuditRecorder;
 import com.staynest.reservation.dto.GuestProfileRequest;
 import com.staynest.reservation.dto.GuestProfileResponse;
 import com.staynest.reservation.dto.GuestProfileUpdateRequest;
@@ -24,6 +25,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 public class GuestProfileServiceImpl implements GuestProfileService {
+
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "GUESTPROFILE";
+
+    @Autowired
+    private AuditRecorder auditRecorder;
 
     private static final Logger log = LoggerFactory.getLogger(GuestProfileServiceImpl.class);
 
@@ -130,6 +137,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
 
         GuestProfile saved = guestProfileRepository.save(guest);
         log.info("GuestProfile created: {}", saved.getGuestId());
+        auditRecorder.record("CREATE", ENTITY, saved.getGuestId());
         return mapToResponse(saved);
     }
 
@@ -174,6 +182,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
         if (request.getPreferencesJson() != null) guest.setPreferencesJson(request.getPreferencesJson());
         GuestProfile updated = guestProfileRepository.save(guest);
         log.info("Guest {} profile updated", id);
+        auditRecorder.record("UPDATE", ENTITY, id);
         return mapToResponse(updated);
     }
 
@@ -191,6 +200,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
         guest.setLoyaltyTier(tier);
         GuestProfile updated = guestProfileRepository.save(guest);
         log.info("Guest {} loyalty tier updated to {}", id, tier);
+        auditRecorder.record("UPDATE_LOYALTY", ENTITY, id);
         return mapToResponse(updated);
     }
 
@@ -202,6 +212,7 @@ public class GuestProfileServiceImpl implements GuestProfileService {
         guest.setStatus(GuestStatus.BLACKLISTED);
         GuestProfile updated = guestProfileRepository.save(guest);
         log.info("Guest {} blacklisted", id);
+        auditRecorder.record("BLACKLIST", ENTITY, id);
         return mapToResponse(updated);
     }
 

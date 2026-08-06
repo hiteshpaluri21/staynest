@@ -1,5 +1,6 @@
 package com.staynest.fb.serviceimpl;
 
+import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.client.FrontDeskServiceClient;
 import com.staynest.fb.client.ReservationServiceClient;
 import com.staynest.fb.dto.ApiResponse;
@@ -44,6 +45,7 @@ class DiningReservationServiceImplTest {
     private static final LocalTime SEVEN_PM = LocalTime.of(19, 0);
 
     @Mock private DiningReservationRepository reservationRepository;
+    @Mock private AuditRecorder auditRecorder;
     @Mock private ReservationServiceClient reservationServiceClient;
     @Mock private FrontDeskServiceClient frontDeskServiceClient;
     @InjectMocks private DiningReservationServiceImpl service;

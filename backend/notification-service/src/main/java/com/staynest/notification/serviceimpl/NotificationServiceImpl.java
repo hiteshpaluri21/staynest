@@ -1,5 +1,6 @@
 package com.staynest.notification.serviceimpl;
 
+import com.staynest.notification.audit.AuditRecorder;
 import com.staynest.notification.dto.NotificationRequest;
 import com.staynest.notification.dto.NotificationResponse;
 import com.staynest.notification.dto.UnreadCountResponse;
@@ -21,6 +22,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "NOTIFICATION";
+
+    private final AuditRecorder auditRecorder;
     private final NotificationRepository notificationRepository;
 
     @Override
@@ -44,6 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setStatus(NotificationStatus.READ);
         Notification updated = notificationRepository.save(notification);
         log.info("Notification {} marked as read", notificationId);
+        auditRecorder.record("MARK_READ", ENTITY, notificationId);
         return mapToResponse(updated);
     }
 
@@ -58,6 +64,7 @@ public class NotificationServiceImpl implements NotificationService {
         
         int count = unreadNotifications.size();
         log.info("Marked {} notifications as read for user {}", count, userId);
+        auditRecorder.record("MARK_ALL_READ", ENTITY, null);
         return count;
     }
 

@@ -1,5 +1,6 @@
 package com.staynest.fb.serviceimpl;
 
+import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.dto.MenuItemRequest;
 import com.staynest.fb.dto.MenuItemResponse;
 import com.staynest.fb.entity.MenuItem;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.when;
 class MenuItemServiceImplTest {
 
     @Mock private MenuItemRepository menuItemRepository;
+    @Mock private AuditRecorder auditRecorder;
     @InjectMocks private MenuItemServiceImpl service;
 
     private static MenuItemRequest request(String name) {

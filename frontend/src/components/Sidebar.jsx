@@ -1,14 +1,16 @@
 import { Nav } from 'react-bootstrap'
 import { NavLink, Link } from 'react-router-dom'
-import { FaUsers, FaBed, FaDoorOpen, FaTags, FaSearch, FaCalendarCheck, FaIdCard, FaConciergeBell, FaClipboardList, FaBroom, FaTools, FaUtensils, FaBell, FaClipboardCheck, FaBookOpen, FaListAlt, FaReceipt } from 'react-icons/fa'
+import { FaUsers, FaBed, FaDoorOpen, FaTags, FaSearch, FaCalendarCheck, FaIdCard, FaConciergeBell, FaClipboardList, FaBroom, FaTools, FaUtensils, FaBell, FaClipboardCheck, FaBookOpen, FaListAlt, FaReceipt, FaHistory } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 
 const ALL_LINKS = [
   { to: '/users', label: 'User Management', icon: <FaUsers />, roles: ['ADMIN'] },
+  { to: '/audit-logs', label: 'Audit Logs', icon: <FaHistory />, roles: ['ADMIN'] },
   { to: '/room-types', label: 'Room Types', icon: <FaBed />, roles: ['ADMIN'] },
   { to: '/rooms', label: 'Rooms', icon: <FaDoorOpen />, roles: ['ADMIN'] },
   { to: '/rate-plans', label: 'Rate Plans', icon: <FaTags />, roles: ['ADMIN', 'GUEST'] },
-  { to: '/book', label: 'Book a Room', icon: <FaSearch />, roles: ['GUEST', 'ADMIN'] },
+  // Guest-only: an admin manages the inventory, they do not book a room in it.
+  { to: '/book', label: 'Book a Room', icon: <FaSearch />, roles: ['GUEST'] },
   // Guest-only: admins get the same data (and more) from the Reservations page.
   { to: '/my-reservations', label: 'My Reservations', icon: <FaCalendarCheck />, roles: ['GUEST'] },
   { to: '/my-stay', label: 'My Stay & Bill', icon: <FaReceipt />, roles: ['GUEST'] },

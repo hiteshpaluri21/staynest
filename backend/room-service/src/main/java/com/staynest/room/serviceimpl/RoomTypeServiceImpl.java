@@ -1,5 +1,6 @@
 package com.staynest.room.serviceimpl;
 
+import com.staynest.room.audit.AuditRecorder;
 import com.staynest.room.dto.RoomTypeRequest;
 import com.staynest.room.dto.RoomTypeResponse;
 import com.staynest.room.entity.RoomType;
@@ -22,6 +23,12 @@ import java.util.stream.Collectors;
 @Service
 public class RoomTypeServiceImpl implements RoomTypeService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "ROOMTYPE";
+
+    @Autowired
+    private AuditRecorder auditRecorder;
+
 	private static final Logger log = LoggerFactory.getLogger(RoomTypeServiceImpl.class);
 
 	@Autowired
@@ -42,6 +49,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
 		RoomType saved = roomTypeRepository.save(roomType);
 		log.info("RoomType created: {}", saved.getRoomTypeId());
+		auditRecorder.record("CREATE", ENTITY, saved.getRoomTypeId());
 		return mapToResponse(saved);
 	}
 
@@ -72,6 +80,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
 		RoomType updated = roomTypeRepository.save(roomType);
 		log.info("RoomType updated: {}", id);
+		auditRecorder.record("UPDATE", ENTITY, id);
 		return mapToResponse(updated);
 	}
 
@@ -83,6 +92,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 		roomType.setStatus(status);
 		RoomType updated = roomTypeRepository.save(roomType);
 		log.info("RoomType {} status updated to {}", id, status);
+		auditRecorder.record("UPDATE_STATUS", ENTITY, id);
 		return mapToResponse(updated);
 	}
 

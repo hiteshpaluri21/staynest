@@ -17,6 +17,23 @@ export const statusBadge = (status) => {
   return 'secondary'
 }
 
+/*
+ * Colour for an audit-trail action. Actions are free-form strings written by each
+ * service's AuditRecorder (CREATE, UPDATE_STATUS, POST_CHARGE, …), so this matches
+ * on the leading verb rather than listing every combination.
+ */
+export const actionBadge = (action) => {
+  if (!action) return 'secondary'
+  const a = String(action).toUpperCase()
+  if (a.startsWith('CREATE')) return 'success'
+  if (a.startsWith('DELETE') || a.startsWith('SOFT_DELETE') || a === 'CANCEL' || a === 'BLACKLIST') return 'danger'
+  if (a.startsWith('UPDATE')) return 'info'
+  if (a === 'CHECKIN' || a === 'CHECKOUT' || a === 'ASSIGN') return 'primary'
+  // LOGIN, MARK_READ and friends are routine traffic — they fall through to grey.
+  if (a === 'POST_CHARGE') return 'warning'
+  return 'secondary'
+}
+
 export const loyaltyBadge = (tier) => {
   const map = { NONE: 'secondary', SILVER: 'light', GOLD: 'warning', PLATINUM: 'purple' }
   return map[tier] || 'secondary'

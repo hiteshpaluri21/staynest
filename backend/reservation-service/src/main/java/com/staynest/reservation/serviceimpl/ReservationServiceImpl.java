@@ -1,5 +1,6 @@
 package com.staynest.reservation.serviceimpl;
 
+import com.staynest.reservation.audit.AuditRecorder;
 import com.staynest.reservation.client.RoomServiceClient;
 import com.staynest.reservation.dto.ApiResponse;
 import com.staynest.reservation.dto.ReservationRequest;
@@ -35,6 +36,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public class ReservationServiceImpl implements ReservationService {
 
 	private static final Logger log = LoggerFactory.getLogger(ReservationServiceImpl.class);
+
+	/** entityType recorded in audit_logs for everything in this service. */
+	private static final String ENTITY = "RESERVATION";
+
+	@Autowired
+	private AuditRecorder auditRecorder;
 
 	@Autowired
 	private ReservationRepository reservationRepository;
@@ -216,6 +223,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		Reservation saved = reservationRepository.save(reservation);
 		log.info("Reservation created: {}", saved.getReservationId());
+		auditRecorder.record("CREATE", ENTITY, saved.getReservationId());
 		notify(guest.getGuestId(), "RESERVATION", "Your reservation #" + saved.getReservationId() + " is confirmed for "
 				+ saved.getCheckInDate() + " to " + saved.getCheckOutDate() + ".");
 		// Alert front-desk staff of the new booking so it appears in their inbox.
@@ -282,6 +290,7 @@ public class ReservationServiceImpl implements ReservationService {
 		reservation.setStatus(ReservationStatus.CANCELLED);
 		Reservation updated = reservationRepository.save(reservation);
 		log.info("Reservation {} cancelled", id);
+		auditRecorder.record("CANCEL", ENTITY, id);
 		return mapToResponse(updated);
 	}
 
@@ -293,6 +302,7 @@ public class ReservationServiceImpl implements ReservationService {
 		reservation.setStatus(status);
 		Reservation updated = reservationRepository.save(reservation);
 		log.info("Reservation {} status updated to {}", id, status);
+		auditRecorder.record("UPDATE_STATUS", ENTITY, id);
 		return mapToResponse(updated);
 	}
 

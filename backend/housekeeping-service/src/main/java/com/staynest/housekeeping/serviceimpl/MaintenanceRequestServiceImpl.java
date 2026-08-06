@@ -1,5 +1,6 @@
 package com.staynest.housekeeping.serviceimpl;
 
+import com.staynest.housekeeping.audit.AuditRecorder;
 import com.staynest.housekeeping.dto.MaintenanceRequestDto;
 import com.staynest.housekeeping.dto.MaintenanceResponse;
 import com.staynest.housekeeping.entity.MaintenanceRequest;
@@ -24,6 +25,11 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class MaintenanceRequestServiceImpl implements MaintenanceRequestService {
+
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "MAINTENANCEREQUEST";
+
+    private final AuditRecorder auditRecorder;
 
     private final MaintenanceRequestRepository maintenanceRepository;
     private final NotificationServiceClient notificationServiceClient;
@@ -69,6 +75,7 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
 
         MaintenanceRequest saved = maintenanceRepository.save(maintenance);
         log.info("Maintenance request created: {}", saved.getRequestId());
+        auditRecorder.record("CREATE", ENTITY, saved.getRequestId());
         // Acknowledge the reporter, and alert the housekeeping team of the new request.
         notify(saved.getReportedBy(), "Your maintenance request #" + saved.getRequestId()
                 + " for room #" + saved.getRoomId() + " has been logged.");
@@ -94,6 +101,7 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
         }
         MaintenanceRequest updated = maintenanceRepository.save(request);
         log.info("Maintenance request {} status updated to {}", requestId, status);
+        auditRecorder.record("UPDATE_STATUS", ENTITY, requestId);
         notify(updated.getReportedBy(), "Your maintenance request #" + updated.getRequestId()
                 + " is now " + status + ".");
         return mapToResponse(updated);
@@ -113,6 +121,7 @@ public class MaintenanceRequestServiceImpl implements MaintenanceRequestService 
         request.setResolvedDate(LocalDate.now());
         MaintenanceRequest updated = maintenanceRepository.save(request);
         log.info("Maintenance request {} resolved", requestId);
+        auditRecorder.record("RESOLVE", ENTITY, requestId);
         return mapToResponse(updated);
     }
 

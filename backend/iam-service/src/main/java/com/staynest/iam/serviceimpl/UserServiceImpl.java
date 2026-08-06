@@ -1,5 +1,6 @@
 package com.staynest.iam.serviceimpl;
 
+import com.staynest.iam.audit.CurrentUser;
 import com.staynest.iam.dto.UserRequest;
 import com.staynest.iam.dto.UserResponse;
 import com.staynest.iam.entity.User;
@@ -34,6 +35,16 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private AuditLogService auditLogService;
 
+    /**
+     * Who to record against a user change: the admin performing it, falling back to the
+     * affected account when nobody is authenticated — which is public self-registration
+     * creating its own row.
+     */
+    private Integer actorFor(Integer affectedUserId) {
+        Integer actor = CurrentUser.id();
+        return actor != null ? actor : affectedUserId;
+    }
+
     @Override
     @Transactional
     public UserResponse createUser(UserRequest request) {
@@ -50,7 +61,7 @@ public class UserServiceImpl implements UserService {
         user.setStatus(UserStatus.ACTIVE);
 
         User saved = userRepository.save(user);
-        auditLogService.logAction(saved.getUserId(), "CREATE_USER", "User", saved.getUserId());
+        auditLogService.logAction(actorFor(saved.getUserId()), "CREATE_USER", "User", saved.getUserId());
         log.info("User created: {}", saved.getEmail());
         return mapToResponse(saved);
     }
@@ -92,7 +103,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         user.setStatus(status);
         User updated = userRepository.save(user);
-        auditLogService.logAction(updated.getUserId(), "UPDATE_STATUS", "User", updated.getUserId());
+        auditLogService.logAction(actorFor(updated.getUserId()), "UPDATE_STATUS", "User", updated.getUserId());
         log.info("User {} status updated to {}", id, status);
         return mapToResponse(updated);
     }
@@ -104,7 +115,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         user.setStatus(UserStatus.INACTIVE);
         userRepository.save(user);
-        auditLogService.logAction(id, "SOFT_DELETE", "User", id);
+        auditLogService.logAction(actorFor(id), "SOFT_DELETE", "User", id);
         log.info("User {} soft deleted", id);
     }
 

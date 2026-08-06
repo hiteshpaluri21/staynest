@@ -117,10 +117,10 @@ export default function LandingPage() {
   const signedIn = isAuthenticated && !loading
 
   /*
-   * Booking is only open to guests (and admins) — the /book route rejects front
-   * desk, housekeeping and F&B accounts, which used to dump them on
-   * /unauthorized from these very buttons. Staff get a link to their own console
-   * instead, so no button on this page can lead to a dead end.
+   * Booking is only open to guests — the /book route rejects every staff account,
+   * admins included, which used to dump them on /unauthorized from these very
+   * buttons. Staff get a link to their own console instead, so no button on this
+   * page can lead to a dead end.
    */
   const staffViewer = signedIn && !canBook(user?.role)
 

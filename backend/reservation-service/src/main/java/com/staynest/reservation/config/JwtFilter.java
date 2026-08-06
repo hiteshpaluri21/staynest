@@ -43,6 +43,8 @@ public class JwtFilter extends OncePerRequestFilter {
                     log.info("JWT valid - email: {}, role: {}, authority: ROLE_{}", email, role, role);
                     var auth = new UsernamePasswordAuthenticationToken(
                         email, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
+                    // Attached to the authentication so the service layer can record who acted.
+                    auth.setDetails(jwtUtil.extractUserId(token));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 } else {
                     log.warn("JWT validation returned false for: {} {}", method, uri);

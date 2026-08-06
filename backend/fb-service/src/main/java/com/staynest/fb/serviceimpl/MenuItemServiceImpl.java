@@ -1,5 +1,6 @@
 package com.staynest.fb.serviceimpl;
 
+import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.dto.MenuItemRequest;
 import com.staynest.fb.dto.MenuItemResponse;
 import com.staynest.fb.entity.MenuItem;
@@ -22,7 +23,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MenuItemServiceImpl implements MenuItemService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "MENUITEM";
+
     private final MenuItemRepository menuItemRepository;
+    private final AuditRecorder auditRecorder;
 
     @Override
     @Transactional
@@ -38,6 +43,7 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .build();
         MenuItem saved = menuItemRepository.save(item);
         log.info("MenuItem created: {}", saved.getMenuItemId());
+        auditRecorder.record("CREATE", ENTITY, saved.getMenuItemId());
         return mapToResponse(saved);
     }
 
@@ -57,6 +63,7 @@ public class MenuItemServiceImpl implements MenuItemService {
         item.setDietaryTags(request.getDietaryTags());
         MenuItem updated = menuItemRepository.save(item);
         log.info("MenuItem {} updated", id);
+        auditRecorder.record("UPDATE", ENTITY, id);
         return mapToResponse(updated);
     }
 
@@ -117,6 +124,7 @@ public class MenuItemServiceImpl implements MenuItemService {
         item.setIsAvailable(isAvailable);
         MenuItem updated = menuItemRepository.save(item);
         log.info("MenuItem {} availability updated to {}", id, isAvailable);
+        auditRecorder.record("UPDATE_AVAILABILITY", ENTITY, id);
         return mapToResponse(updated);
     }
 
@@ -128,6 +136,7 @@ public class MenuItemServiceImpl implements MenuItemService {
         item.setPrice(price);
         MenuItem updated = menuItemRepository.save(item);
         log.info("MenuItem {} price updated to {}", id, price);
+        auditRecorder.record("UPDATE_PRICE", ENTITY, id);
         return mapToResponse(updated);
     }
 

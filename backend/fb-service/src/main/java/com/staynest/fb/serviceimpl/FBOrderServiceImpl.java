@@ -1,6 +1,7 @@
 package com.staynest.fb.serviceimpl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.client.FrontDeskServiceClient;
 import com.staynest.fb.dto.FBOrderItemResponse;
 import com.staynest.fb.dto.FBOrderRequest;
@@ -34,6 +35,10 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 public class FBOrderServiceImpl implements FBOrderService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "FBORDER";
+
+    private final AuditRecorder auditRecorder;
     private final FBOrderRepository orderRepository;
     private final MenuItemRepository menuItemRepository;
     private final FrontDeskServiceClient frontDeskClient;
@@ -86,6 +91,7 @@ public class FBOrderServiceImpl implements FBOrderService {
 
         log.info("Order placed: {} — {} charged to folio for stay {}",
                 saved.getOrderId(), totalAmount, saved.getStayId());
+        auditRecorder.record("CREATE", ENTITY, saved.getOrderId());
         notify(request.getPlacedBy(), "Your F&B order #" + saved.getOrderId()
                 + " has been placed. Total: " + totalAmount + ", added to your bill.");
         return mapToResponse(saved);
@@ -135,6 +141,7 @@ public class FBOrderServiceImpl implements FBOrderService {
         // the kitchen is done and the charge has been settled.
 
         log.info("Order {} status updated to {}", orderId, status);
+        auditRecorder.record("UPDATE_STATUS", ENTITY, orderId);
         return mapToResponse(updated);
     }
 
@@ -159,6 +166,7 @@ public class FBOrderServiceImpl implements FBOrderService {
 
         log.info("Order {} cancelled — {} reversed off the folio for stay {}",
                 orderId, order.getTotalAmount(), order.getStayId());
+        auditRecorder.record("CANCEL", ENTITY, orderId);
         notify(order.getPlacedBy(), "Your F&B order #" + orderId + " was cancelled. "
                 + order.getTotalAmount() + " has been taken off your bill.");
         return mapToResponse(updated);

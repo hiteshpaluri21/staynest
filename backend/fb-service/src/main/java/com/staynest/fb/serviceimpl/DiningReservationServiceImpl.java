@@ -1,5 +1,6 @@
 package com.staynest.fb.serviceimpl;
 
+import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.client.FeignErrors;
 import com.staynest.fb.client.FrontDeskServiceClient;
 import com.staynest.fb.client.ReservationServiceClient;
@@ -24,6 +25,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class DiningReservationServiceImpl implements DiningReservationService {
+
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "DININGRESERVATION";
+
+    private final AuditRecorder auditRecorder;
 
     private final DiningReservationRepository reservationRepository;
     private final ReservationServiceClient reservationServiceClient;
@@ -66,6 +72,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
 
         DiningReservation saved = reservationRepository.save(reservation);
         log.info("Dining reservation created: {}", saved.getDiningResId());
+        auditRecorder.record("CREATE", ENTITY, saved.getDiningResId());
         return mapToResponse(saved);
     }
 
@@ -77,6 +84,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         reservation.setStatus(status);
         DiningReservation updated = reservationRepository.save(reservation);
         log.info("Dining reservation {} status updated to {}", id, status);
+        auditRecorder.record("UPDATE_STATUS", ENTITY, id);
         return mapToResponse(updated);
     }
 
@@ -102,6 +110,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         reservation.setStatus(DiningResStatus.CANCELLED);
         DiningReservation updated = reservationRepository.save(reservation);
         log.info("Dining reservation {} cancelled", id);
+        auditRecorder.record("CANCEL", ENTITY, id);
         return mapToResponse(updated);
     }
 

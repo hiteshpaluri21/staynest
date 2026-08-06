@@ -35,6 +35,8 @@ public class JwtFilter extends OncePerRequestFilter {
                 String role = jwtUtil.extractRole(token);
                 var auth = new UsernamePasswordAuthenticationToken(
                     email, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
+                // Attached to the authentication so the service layer can record who acted.
+                auth.setDetails(jwtUtil.extractUserId(token));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }

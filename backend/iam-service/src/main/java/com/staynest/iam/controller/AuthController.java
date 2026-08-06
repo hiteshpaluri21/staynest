@@ -8,6 +8,7 @@ import com.staynest.iam.repository.UserRepository;
 import com.staynest.iam.config.JwtUtil;
 import com.staynest.iam.dto.UserRequest;
 import com.staynest.iam.dto.UserResponse;
+import com.staynest.iam.service.AuditLogService;
 import com.staynest.iam.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class AuthController {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
@@ -46,7 +48,7 @@ public class AuthController {
             return ResponseEntity.status(403).body(ApiResponse.error("Account is deactivated. Please contact an administrator."));
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getUserId());
         
         LoginResponse response = LoginResponse.builder()
                 .token(token)
@@ -55,6 +57,13 @@ public class AuthController {
                 .email(user.getEmail())
                 .name(user.getName())
                 .build();
+
+        /*
+         * Successful sign-ins go on the trail so an admin can see who has been in the
+         * system. Rejected attempts are deliberately not recorded — a wrong password
+         * would otherwise let anyone who knows an email address fill the table.
+         */
+        auditLogService.logAction(user.getUserId(), "LOGIN", "User", user.getUserId());
 
         log.info("Login successful for: {}", request.getEmail());
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
@@ -73,7 +82,7 @@ public class AuthController {
         request.setRole(Role.GUEST);
 
         UserResponse created = userService.createUser(request);
-        String token = jwtUtil.generateToken(created.getEmail(), created.getRole().name());
+        String token = jwtUtil.generateToken(created.getEmail(), created.getRole().name(), created.getUserId());
 
         LoginResponse response = LoginResponse.builder()
                 .token(token)

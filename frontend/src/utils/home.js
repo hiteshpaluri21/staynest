@@ -2,9 +2,8 @@
  * Where each role belongs after signing in, and who is allowed to book.
  *
  * This lived inline in LoginPage, which meant the public site had no way to know
- * it and sent every signed-in user to /book. The /book route only admits GUEST and
- * ADMIN, so front desk, housekeeping and F&B staff were bounced to /unauthorized.
- * Both places now read from here.
+ * it and sent every signed-in user to /book. The /book route only admits GUEST, so
+ * staff accounts were bounced to /unauthorized. Both places now read from here.
  */
 
 const HOME_BY_ROLE = {
@@ -20,6 +19,7 @@ export const homeFor = (role) => HOME_BY_ROLE[role] || '/book'
 
 /**
  * Whether this role can reach the booking search at all. Must stay in step with
- * the roles on the /book route in App.jsx.
+ * the roles on the /book route in App.jsx — which is guests only, as an admin
+ * administers the hotel rather than booking a stay in it.
  */
-export const canBook = (role) => role === 'GUEST' || role === 'ADMIN'
+export const canBook = (role) => role === 'GUEST'

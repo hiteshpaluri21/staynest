@@ -1,5 +1,6 @@
 package com.staynest.frontdesk.serviceimpl;
 
+import com.staynest.frontdesk.audit.AuditRecorder;
 import com.staynest.frontdesk.dto.FolioItemRequest;
 import com.staynest.frontdesk.dto.FolioItemResponse;
 import com.staynest.frontdesk.entity.FolioItem;
@@ -25,6 +26,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FolioItemServiceImpl implements FolioItemService {
 
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "FOLIOITEM";
+
+    private final AuditRecorder auditRecorder;
     private final FolioItemRepository folioItemRepository;
     private final StayRecordRepository stayRecordRepository;
 
@@ -54,6 +59,7 @@ public class FolioItemServiceImpl implements FolioItemService {
         stayRecordRepository.save(stay);
 
         log.info("Folio item added: {}", saved.getFolioItemId());
+        auditRecorder.record("CREATE", ENTITY, saved.getFolioItemId());
         return mapToResponse(saved);
     }
 
@@ -85,6 +91,7 @@ public class FolioItemServiceImpl implements FolioItemService {
         FolioItem saved = folioItemRepository.save(item);
         stayRecordRepository.save(stay);
         log.info("Folio item updated: {}", saved.getFolioItemId());
+        auditRecorder.record("UPDATE", ENTITY, saved.getFolioItemId());
         return mapToResponse(saved);
     }
 

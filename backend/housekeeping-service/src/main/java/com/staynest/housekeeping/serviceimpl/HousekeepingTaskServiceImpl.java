@@ -1,5 +1,6 @@
 package com.staynest.housekeeping.serviceimpl;
 
+import com.staynest.housekeeping.audit.AuditRecorder;
 import com.staynest.housekeeping.dto.HousekeepingTaskRequest;
 import com.staynest.housekeeping.dto.HousekeepingTaskResponse;
 import com.staynest.housekeeping.entity.HousekeepingTask;
@@ -27,6 +28,11 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
+
+    /** entityType recorded in audit_logs for everything in this service. */
+    private static final String ENTITY = "HOUSEKEEPINGTASK";
+
+    private final AuditRecorder auditRecorder;
 
     private final HousekeepingTaskRepository taskRepository;
     private final NotificationServiceClient notificationServiceClient;
@@ -65,6 +71,7 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
 
         HousekeepingTask saved = taskRepository.save(task);
         log.info("Housekeeping task created: {}", saved.getTaskId());
+        auditRecorder.record("CREATE", ENTITY, saved.getTaskId());
         return mapToResponse(saved);
     }
 
@@ -105,6 +112,7 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
         task.setAssignedToId(staffId);
         HousekeepingTask updated = taskRepository.save(task);
         log.info("Task {} assigned to staff {}", taskId, staffId);
+        auditRecorder.record("ASSIGN", ENTITY, taskId);
         notify(staffId, "You have been assigned housekeeping task #" + updated.getTaskId()
                 + " for room #" + updated.getRoomId() + ".");
         return mapToResponse(updated);
@@ -122,6 +130,7 @@ public class HousekeepingTaskServiceImpl implements HousekeepingTaskService {
         }
         HousekeepingTask updated = taskRepository.save(task);
         log.info("Task {} status updated to {}", taskId, status);
+        auditRecorder.record("UPDATE_STATUS", ENTITY, taskId);
         return mapToResponse(updated);
     }
 
