@@ -87,7 +87,7 @@ export default function DiningReservationPage() {
     await load()
   }
 
-  const guestLabel = (id) => guestNames[id] ?? `Guest #${id}`
+  const guestLabel = (id) => guestNames[id] ?? `Guest ${id}`
 
   return (
     <div>
@@ -108,7 +108,7 @@ export default function DiningReservationPage() {
           <tbody>
             {items.map(d => (
               <tr key={d.diningResId}>
-                <td>#{d.diningResId}</td>
+                <td>{d.diningResId}</td>
                 {!isGuest && <td>{guestLabel(d.guestId)}</td>}
                 <td>{d.restaurantOutlet}</td>
                 <td>{d.date}</td>
@@ -156,7 +156,7 @@ export default function DiningReservationPage() {
             </Row>
             <p className="text-muted small mb-0">
               {activeStayId != null
-                ? `This booking will be linked to your current stay (#${activeStayId}).`
+                ? `This booking will be linked to your current stay (${activeStayId}).`
                 : 'You are not checked in, so this booking will not be linked to a stay.'}
             </p>
           </Modal.Body>
