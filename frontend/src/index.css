@@ -550,21 +550,13 @@ h1, h2, h3, h4, h5, h6 {
 /* Public hotel site at "/". Reads from the same tokens as the app, so the theme
    toggle recolours it too.
 
-   Responsiveness here is mostly breakpoint-free: the card grids use
-   `auto-fit` + `minmax`, so they reflow continuously at any width or aspect
-   ratio instead of snapping at fixed sizes. Display type uses clamp(), so it
-   scales with the viewport rather than jumping. Only a few genuine edge cases
-   (narrow phones, short landscape screens) need media queries. */
+   Responsiveness here is mostly breakpoint-free: display type uses clamp(), so
+   it scales with the viewport rather than jumping. Only a few genuine edge
+   cases (narrow phones, short landscape screens) need media queries. */
 
 .site {
     /* Contain the decorative hero glow. */
     overflow-x: hidden;
-}
-
-/* Stop the sticky header from covering a section heading when an anchor link
-   jumps to it. */
-.site section[id] {
-    scroll-margin-top: 5rem;
 }
 
 /* ------------------------------------------------------- landing header -- */
@@ -575,35 +567,6 @@ h1, h2, h3, h4, h5, h6 {
     position: sticky;
     top: 0;
     z-index: 20;
-}
-
-.site-header .nav-anchors {
-    display: flex;
-    gap: 1.5rem;
-}
-
-.site-header .nav-anchors a {
-    color: var(--sn-text-muted);
-    text-decoration: none;
-    font-size: .92rem;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.site-header .nav-anchors a:hover {
-    color: var(--sn-brand);
-}
-
-[data-bs-theme="dark"] .site-header .nav-anchors a:hover {
-    color: var(--sn-accent);
-}
-
-/* The anchor links are the first thing to go when width runs out — the log-in
-   button and theme toggle matter more. */
-@media (max-width: 991.98px) {
-    .site-header .nav-anchors {
-        display: none;
-    }
 }
 
 /* Shows who is signed in, and doubles as the way into the app. */
@@ -673,12 +636,6 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: 2rem;
 }
 
-.hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .75rem;
-}
-
 /* Check-in / check-out / front desk strip under the hero copy. */
 .hero-facts {
     display: flex;
@@ -725,22 +682,7 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
-/* ------------------------------------------------------------ sections --- */
-
-.section {
-    padding: clamp(3rem, 7vw, 5.5rem) 0;
-}
-
-.section-head {
-    max-width: 46ch;
-    margin-bottom: clamp(1.75rem, 4vw, 3rem);
-}
-
-.section-head.center {
-    margin-inline: auto;
-    text-align: center;
-}
-
+/* The small uppercase kicker above the hero headline. */
 .section-label {
     display: block;
     font-size: .78rem;
@@ -749,262 +691,6 @@ h1, h2, h3, h4, h5, h6 {
     text-transform: uppercase;
     color: var(--sn-accent);
     margin-bottom: .6rem;
-}
-
-.section-head h2 {
-    font-size: clamp(1.6rem, 3.2vw, 2.4rem);
-    font-weight: 700;
-    letter-spacing: -.02em;
-    margin-bottom: .6rem;
-}
-
-.section-head p {
-    color: var(--sn-text-muted);
-    margin: 0;
-}
-
-.section-alt {
-    background: var(--sn-surface-2);
-    border-block: 1px solid var(--sn-border);
-}
-
-/* ---------------------------------------------------------------- grid ---- */
-
-/* One breakpoint-free grid, reused by rooms, dining and facilities. The min
-   track width differs per section, so each sets its own --min. */
-.auto-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(var(--min, 17rem), 100%), 1fr));
-    gap: clamp(1rem, 2vw, 1.5rem);
-}
-
-/* --------------------------------------------------------------- rooms ---- */
-
-.room-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--sn-surface);
-    border: 1px solid var(--sn-border);
-    border-radius: var(--sn-radius);
-    overflow: hidden;
-}
-
-/* Stands in for room photography. Swap for an <img> when real assets exist. */
-.room-photo {
-    aspect-ratio: 3 / 2;
-    background:
-        linear-gradient(135deg, rgba(var(--bs-primary-rgb), .85), rgba(var(--bs-primary-rgb), .45)),
-        var(--sn-surface-2);
-    display: flex;
-    align-items: flex-end;
-    padding: 1rem;
-    color: #fff;
-    font-weight: 700;
-    letter-spacing: -.01em;
-    font-size: 1.15rem;
-}
-
-.room-body {
-    padding: 1.15rem;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    gap: .75rem;
-}
-
-.room-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .35rem .9rem;
-    color: var(--sn-text-muted);
-    font-size: .85rem;
-}
-
-.room-amenities {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: .35rem;
-}
-
-.room-amenities li {
-    font-size: .78rem;
-    padding: .2rem .55rem;
-    border-radius: 999px;
-    background: var(--sn-surface-2);
-    border: 1px solid var(--sn-border);
-    color: var(--sn-text-muted);
-}
-
-.room-rate {
-    /* Pushes the rate + button to the bottom, so cards of differing text length
-       still line up. */
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .75rem;
-    padding-top: .5rem;
-}
-
-.room-rate .amount {
-    font-size: 1.3rem;
-    font-weight: 700;
-    letter-spacing: -.02em;
-}
-
-.room-rate .per {
-    color: var(--sn-text-muted);
-    font-size: .8rem;
-}
-
-/* -------------------------------------------------------------- dining ---- */
-
-.dining-card {
-    background: var(--sn-surface);
-    border: 1px solid var(--sn-border);
-    border-radius: var(--sn-radius);
-    padding: 1.35rem;
-    height: 100%;
-}
-
-.dining-card h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: .2rem;
-}
-
-.dining-card .kind {
-    display: block;
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .07em;
-    color: var(--sn-accent);
-    font-weight: 700;
-    margin-bottom: .6rem;
-}
-
-.dining-card p {
-    color: var(--sn-text-muted);
-    font-size: .9rem;
-    margin-bottom: .75rem;
-}
-
-.dining-card .hours {
-    font-size: .82rem;
-    color: var(--sn-text-muted);
-    border-top: 1px solid var(--sn-border);
-    padding-top: .6rem;
-    margin: 0;
-}
-
-/* ---------------------------------------------------------- facilities ---- */
-
-.facility {
-    display: flex;
-    gap: .85rem;
-    align-items: flex-start;
-}
-
-.facility-icon {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--sn-radius-sm);
-    background: rgba(var(--bs-primary-rgb), .12);
-    color: var(--sn-brand);
-}
-
-[data-bs-theme="dark"] .facility-icon {
-    color: #a9c4e6;
-}
-
-.facility h3 {
-    font-size: .98rem;
-    font-weight: 600;
-    margin-bottom: .2rem;
-}
-
-.facility p {
-    color: var(--sn-text-muted);
-    font-size: .86rem;
-    margin: 0;
-}
-
-/* ------------------------------------------------------------- contact ---- */
-
-.contact-card {
-    background: var(--sn-surface);
-    border: 1px solid var(--sn-border);
-    border-radius: var(--sn-radius);
-    padding: clamp(1.25rem, 3vw, 2rem);
-    height: 100%;
-}
-
-.contact-card dt {
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--sn-text-muted);
-    font-weight: 700;
-    margin-bottom: .2rem;
-}
-
-.contact-card dd {
-    margin: 0 0 1.1rem;
-    line-height: 1.5;
-}
-
-.contact-card dd:last-child {
-    margin-bottom: 0;
-}
-
-/* ----------------------------------------------------------- closing cta -- */
-
-.closing-cta {
-    background:
-        radial-gradient(60rem 30rem at 50% 120%, rgba(var(--bs-primary-rgb), .22), transparent 65%),
-        var(--sn-surface);
-    border: 1px solid var(--sn-border);
-    border-radius: var(--sn-radius);
-    padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 3rem);
-    text-align: center;
-}
-
-.closing-cta h2 {
-    font-size: clamp(1.5rem, 3vw, 2.2rem);
-    font-weight: 700;
-    letter-spacing: -.02em;
-    margin-bottom: .6rem;
-}
-
-.closing-cta p {
-    color: var(--sn-text-muted);
-    max-width: 44ch;
-    margin: 0 auto 1.75rem;
-}
-
-/* -------------------------------------------------------------- footer ---- */
-
-.site-footer {
-    border-top: 1px solid var(--sn-border);
-    padding: clamp(1.5rem, 4vw, 2.5rem) 0;
-    color: var(--sn-text-muted);
-    font-size: .875rem;
-}
-
-.site-footer a {
-    color: var(--sn-text-muted);
-    text-decoration: none;
-}
-
-.site-footer a:hover {
-    color: var(--sn-brand);
 }
 
 /* Users who prefer reduced motion get no hover lift or scroll smoothing. */
