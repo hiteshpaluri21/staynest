@@ -131,7 +131,7 @@ export default function MyStayPage() {
           <Card className="shadow-sm mb-3">
             <Card.Header><strong>Stay Summary</strong></Card.Header>
             <Card.Body>
-              <div className="mb-2"><strong>Reservation:</strong> #{stay.reservationId}</div>
+              <div className="mb-2"><strong>Reservation:</strong> {stay.reservationId}</div>
               <div className="mb-2"><strong>Room:</strong> {roomNumber != null ? `Room ${roomNumber}` : `Room #${stay.assignedRoomId}`}</div>
               <div className="mb-2"><strong>Status:</strong> <Badge bg={statusBadge(stay.status)}>{stay.status}</Badge></div>
               <hr />
@@ -217,7 +217,7 @@ export default function MyStayPage() {
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.orderId}>
-                        <td>#{o.orderId}</td>
+                        <td>{o.orderId}</td>
                         <td><Badge bg="info">{o.orderType}</Badge></td>
                         <td className="small">
                           {o.items && o.items.length ? o.items.map(i => `${i.name} ×${i.qty}`).join(', ') : o.itemsJson}
