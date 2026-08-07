@@ -185,7 +185,7 @@ export default function FBOrderPage() {
                         <td>₹{o.totalAmount}</td>
                         <td><Badge bg={statusBadge(o.status)}>{o.status}</Badge></td>
                         <td>
-                          {NEXT[o.status] && <Button size="sm" variant="outline-primary" className="me-1" onClick={() => advance(o.orderId, NEXT[o.status])}>→ {NEXT[o.status]}</Button>}
+                          {NEXT[o.status] && <Button size="sm" variant="outline-primary" className="me-1" onClick={() => advance(o.orderId, NEXT[o.status])}> {NEXT[o.status]}</Button>}
                           {o.status === 'PLACED' && <Button size="sm" variant="outline-danger" onClick={() => { setActionErr(''); setPendingCancel(o) }}>Cancel</Button>}
                         </td>
                       </tr>

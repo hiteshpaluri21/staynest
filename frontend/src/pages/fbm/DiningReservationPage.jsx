@@ -180,10 +180,10 @@ export default function DiningReservationPage() {
             <Form.Group className="mb-3"><Form.Label>Outlet</Form.Label><Form.Select value={form.restaurantOutlet} onChange={e => set('restaurantOutlet', e.target.value)}>{OUTLETS.map(o => <option key={o}>{o}</option>)}</Form.Select></Form.Group>
             <Row>
               <Col xs={6} md={3}><Form.Group className="mb-3"><Form.Label>Date</Form.Label><Form.Control type="date" required min={new Date().toISOString().split('T')[0]} value={form.date} onChange={e => set('date', e.target.value)} /></Form.Group></Col>
-              <Col xs={6} md={3}><Form.Group className="mb-3"><Form.Label>From</Form.Label><Form.Control type="time" required value={form.time} onChange={e => setStart(e.target.value)} /></Form.Group></Col>
+              <Col xs={6} md={3}><Form.Group className="mb-3"><Form.Label>Entry Time</Form.Label><Form.Control type="time" required value={form.time} onChange={e => setStart(e.target.value)} /></Form.Group></Col>
               <Col xs={6} md={3}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Until</Form.Label>
+                  <Form.Label>Exit Time</Form.Label>
                   <Form.Control type="time" required value={form.endTime} isInvalid={endBeforeStart} onChange={e => set('endTime', e.target.value)} />
                 </Form.Group>
               </Col>
