@@ -57,7 +57,7 @@ export default function MaintenancePage() {
   )
   const roomLabel = (roomId) => {
     const num = roomNumberMap[roomId]
-    return num != null ? `Room ${num}` : `Room #${roomId}`
+    return num != null ? `Room ${num}` : `Room ${roomId}`
   }
 
   const changeStatus = async (id, status) => {
@@ -106,7 +106,7 @@ export default function MaintenancePage() {
           <tbody>
             {items.map(m => (
               <tr key={m.requestId}>
-                <td>#{m.requestId}</td>
+                <td>{m.requestId}</td>
                 <td>{roomLabel(m.roomId)}</td>
                 <td>{m.issueDescription}</td>
                 <td><Badge bg={m.priority === 'URGENT' ? 'danger' : m.priority === 'HIGH' ? 'warning' : 'secondary'}>{m.priority}</Badge></td>
