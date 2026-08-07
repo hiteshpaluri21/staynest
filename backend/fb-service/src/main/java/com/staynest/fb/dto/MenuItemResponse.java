@@ -1,5 +1,6 @@
 package com.staynest.fb.dto;
 
+import com.staynest.fb.enums.FoodType;
 import com.staynest.fb.enums.MenuCategory;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ public class MenuItemResponse {
     private String name;
     private MenuCategory category;
     private BigDecimal price;
+    private FoodType foodType;
     private Boolean isAvailable;
     private String dietaryTags;
 }

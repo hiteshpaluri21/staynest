@@ -55,6 +55,14 @@ public class MenuItemController {
         return ResponseEntity.ok(ApiResponse.success("Menu item updated", menuItemService.updateMenuItem(id, request)));
     }
 
+    // Refused while the dish is on an unfinished order — see MenuItemServiceImpl#deleteMenuItem.
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Integer id) {
+        menuItemService.deleteMenuItem(id);
+        return ResponseEntity.ok(ApiResponse.success("Menu item deleted", null));
+    }
+
     @PatchMapping("/{id}/availability")
     @PreAuthorize("hasAnyRole('ADMIN', 'FBMANAGER')")
     public ResponseEntity<ApiResponse<MenuItemResponse>> updateAvailability(

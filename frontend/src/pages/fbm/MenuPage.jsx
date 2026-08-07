@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Card, Row, Col, Button, Badge, Form, Alert } from 'react-bootstrap'
-import { getMenuItems, updateAvailability } from '../../services/fbm/menuService'
+import { getMenuItems, updateAvailability, deleteMenuItem } from '../../services/fbm/menuService'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
 import MenuItemFormModal from '../../components/MenuItemFormModal'
+import ConfirmModal from '../../components/ConfirmModal'
 import { useAuth } from '../../context/AuthContext'
 
 const CATEGORIES = ['BREAKFAST', 'MAINCOURSE', 'BEVERAGE', 'DESSERT']
+
+// The conventional Indian menu marker: a green dot for veg, red for non-veg. Items created
+// before the food type existed have none, and are left unmarked rather than assumed veg.
+const FOOD_TYPES = {
+  VEG: { label: 'Veg', variant: 'success' },
+  NONVEG: { label: 'Non-veg', variant: 'danger' },
+  EGG: { label: 'Egg', variant: 'warning' },
+}
 
 export default function MenuPage() {
   const { user } = useAuth()
@@ -19,6 +28,8 @@ export default function MenuPage() {
   const [catFilter, setCatFilter] = useState('')
   // Failures from row actions; `error` is not reused, as it replaces the whole grid.
   const [actionErr, setActionErr] = useState('')
+  // The item awaiting delete confirmation, or null when the modal is closed.
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -31,6 +42,13 @@ export default function MenuPage() {
     setActionErr('')
     try { await updateAvailability(item.menuItemId, !item.isAvailable); load() }
     catch (e) { setActionErr(e.message) }
+  }
+
+  // Errors propagate to ConfirmModal, which shows them inline and stays open — that matters
+  // here, as the server refuses the delete while the dish is on an unfinished order.
+  const confirmDelete = async () => {
+    await deleteMenuItem(pendingDelete.menuItemId)
+    await load()
   }
 
   return (
@@ -56,13 +74,21 @@ export default function MenuPage() {
                     <Badge bg={m.isAvailable ? 'success' : 'danger'}>{m.isAvailable ? 'Available' : 'Unavailable'}</Badge>
                   </div>
                   <h6 className="mt-2 mb-1">{m.name}</h6>
-                  <div className="fw-bold text-primary mb-1">₹{m.price}</div>
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <span className="fw-bold text-primary">₹{m.price}</span>
+                    {FOOD_TYPES[m.foodType] && (
+                      <Badge bg={FOOD_TYPES[m.foodType].variant}>{FOOD_TYPES[m.foodType].label}</Badge>
+                    )}
+                  </div>
                   {m.dietaryTags && <div className="small text-muted mb-2">{m.dietaryTags}</div>}
                   {canManage && (
-                    <div className="d-flex gap-1">
+                    <div className="d-flex flex-wrap gap-1">
                       <Button size="sm" variant="outline-primary" onClick={() => setEditItem(m)}>Edit</Button>
                       <Button size="sm" variant="outline-secondary" onClick={() => toggle(m)}>
-                        Toggle Availability
+                        {m.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                      </Button>
+                      <Button size="sm" variant="outline-danger" onClick={() => { setActionErr(''); setPendingDelete(m) }}>
+                        Delete
                       </Button>
                     </div>
                   )}
@@ -74,6 +100,20 @@ export default function MenuPage() {
       }
       <MenuItemFormModal show={showModal} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }} />
       <MenuItemFormModal show={!!editItem} item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load() }} />
+
+      <ConfirmModal
+        show={pendingDelete != null}
+        title="Delete menu item"
+        body={pendingDelete && (
+          <p className="mb-0">
+            Delete <strong>{pendingDelete.name}</strong> from the menu for good? To take it off
+            the ordering screens but keep it on record, mark it unavailable instead.
+          </p>
+        )}
+        confirmLabel="Delete item"
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

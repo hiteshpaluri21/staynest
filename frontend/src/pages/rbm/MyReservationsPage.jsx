@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Table, Button, Badge } from 'react-bootstrap'
 import { getReservations, cancelReservation } from '../../services/rbm/reservationService'
 import { getStays } from '../../services/fds/stayService'
-import { getRooms } from '../../services/ric/roomService'
+import { getRoomNumbers } from '../../services/ric/roomService'
 import { useAuth } from '../../context/AuthContext'
 import Loader from '../../components/Loader'
 import EmptyState from '../../components/EmptyState'
@@ -13,7 +13,8 @@ export default function MyReservationsPage() {
   const { user, guestId } = useAuth()
   const [items, setItems] = useState([])
   const [stays, setStays] = useState([])
-  // Stays only carry assignedRoomId (a PK), so resolve it to the room number guests recognise.
+  // Stays only carry assignedRoomId (a PK), so resolve it to the room number guests recognise;
+  // getRoomNumbers falls back to a per-room lookup rather than printing the raw id.
   const [roomNumbers, setRoomNumbers] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -27,14 +28,13 @@ export default function MyReservationsPage() {
     try {
       // Filter on the reservation-service guestId, never user.userId — they are different keys,
       // and querying by userId returned an empty list even though the booking existed.
-      const [resList, stayList, rooms] = await Promise.all([
+      const [resList, stayList] = await Promise.all([
         getReservations(isStaff ? {} : { guestId }),
         getStays(isStaff ? {} : { guestId }).catch(() => []),
-        getRooms().catch(() => [])
       ])
       setItems(resList)
       setStays(stayList)
-      setRoomNumbers(Object.fromEntries((rooms || []).map(r => [r.roomId, r.roomNumber])))
+      setRoomNumbers(await getRoomNumbers((stayList || []).map(s => s.assignedRoomId)))
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
 
@@ -82,10 +82,12 @@ export default function MyReservationsPage() {
                     {stay ? (
                       <div>
                         <Badge bg="dark" className="me-1">Stay {stay.stayId}</Badge>
+                        {/* Room number, not the id — the id means nothing to a guest. It only
+                            appears if room-service could not be reached at all. */}
                         <Badge bg="secondary">
                           {roomNumbers[stay.assignedRoomId] != null
                             ? `Room ${roomNumbers[stay.assignedRoomId]}`
-                            : `Room id ${stay.assignedRoomId}`}
+                            : 'Room not available'}
                         </Badge>
                       </div>
                     ) : (

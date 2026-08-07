@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,11 +16,13 @@ public interface DiningReservationRepository extends JpaRepository<DiningReserva
     List<DiningReservation> findByStatus(DiningResStatus status);
 
     /**
-     * Detects a guest double-booking the same outlet for the same slot. The status
-     * filter is what lets a guest rebook a slot they previously cancelled — only live
-     * bookings count as a clash.
+     * Live bookings at one outlet on one day, which the service overlap-checks in memory
+     * against the requested sitting. The status filter is what lets a slot be rebooked after
+     * a cancellation — only CONFIRMED and SEATED bookings hold the room.
+     *
+     * Overlap is not expressed as a derived query on purpose: end times may be null on older
+     * rows, and a day's bookings for a single outlet are a handful of records.
      */
-    boolean existsByGuestIdAndRestaurantOutletIgnoreCaseAndDateAndTimeAndStatusIn(
-            Integer guestId, String restaurantOutlet, LocalDate date, LocalTime time,
-            Collection<DiningResStatus> statuses);
+    List<DiningReservation> findByRestaurantOutletIgnoreCaseAndDateAndStatusIn(
+            String restaurantOutlet, LocalDate date, Collection<DiningResStatus> statuses);
 }

@@ -20,6 +20,7 @@ import org.mockito.quality.Strictness;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -34,8 +35,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * A guest must not hold two tables at the same outlet for the same slot, and a cancelled
- * booking must not block rebooking that slot.
+ * An outlet is held exclusively for the length of a sitting: no second party may book an
+ * overlapping window there, the same guest may not double-book, and a cancelled booking
+ * must free the slot again.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -66,16 +68,26 @@ class DiningReservationServiceImplTest {
                 .thenReturn(ApiResponse.success(Map.of("guestId", 4)));
     }
 
-    private void slotAlreadyHeld(boolean held) {
-        when(reservationRepository.existsByGuestIdAndRestaurantOutletIgnoreCaseAndDateAndTimeAndStatusIn(
-                anyInt(), anyString(), any(LocalDate.class), any(LocalTime.class), any(Collection.class)))
-                .thenReturn(held);
+    /** What the outlet already holds that day. An empty list means the outlet is free. */
+    private void outletHolds(DiningReservation... existing) {
+        when(reservationRepository.findByRestaurantOutletIgnoreCaseAndDateAndStatusIn(
+                anyString(), any(LocalDate.class), any(Collection.class)))
+                .thenReturn(List.of(existing));
+    }
+
+    /** A live booking by someone else, over the given window. */
+    private DiningReservation booking(int guestId, LocalTime from, LocalTime to) {
+        return DiningReservation.builder()
+                .diningResId(9).guestId(guestId).restaurantOutlet(OUTLET)
+                .date(LocalDate.now().plusDays(1)).time(from).endTime(to).covers(2)
+                .status(DiningResStatus.CONFIRMED)
+                .build();
     }
 
     @Test
     void aFreeSlotIsBooked() {
         guestExists();
-        slotAlreadyHeld(false);
+        outletHolds();
         when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var saved = service.createReservation(request(LocalDate.now().plusDays(1)));
@@ -84,10 +96,48 @@ class DiningReservationServiceImplTest {
         assertThat(saved.getCovers()).isEqualTo(2);
     }
 
+    /** No end time supplied, so the sitting runs for the default 90 minutes. */
     @Test
-    void aSecondBookingForTheSameOutletAndSlotIsRejected() {
+    void anOmittedEndTimeDefaultsToAStandardSitting() {
         guestExists();
-        slotAlreadyHeld(true);
+        outletHolds();
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var saved = service.createReservation(request(LocalDate.now().plusDays(1)));
+
+        assertThat(saved.getEndTime()).isEqualTo(LocalTime.of(20, 30));
+    }
+
+    @Test
+    void anEndTimeAtOrBeforeTheStartIsRejected() {
+        guestExists();
+        DiningReservationRequest req = request(LocalDate.now().plusDays(1));
+        req.setEndTime(LocalTime.of(18, 0));
+
+        assertThatThrownBy(() -> service.createReservation(req))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("must be after the start time");
+
+        verify(reservationRepository, never()).save(any());
+    }
+
+    /** The point of the whole rule: one party holds the outlet, so another guest is turned away. */
+    @Test
+    void anotherGuestCannotBookAnOverlappingWindow() {
+        guestExists();
+        outletHolds(booking(11, LocalTime.of(18, 30), LocalTime.of(20, 0)));
+
+        assertThatThrownBy(() -> service.createReservation(request(LocalDate.now().plusDays(1))))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("is already booked");
+
+        verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    void theSameGuestCannotDoubleBookTheSameWindow() {
+        guestExists();
+        outletHolds(booking(4, SEVEN_PM, LocalTime.of(20, 30)));
 
         assertThatThrownBy(() -> service.createReservation(request(LocalDate.now().plusDays(1))))
                 .isInstanceOf(BadRequestException.class)
@@ -96,18 +146,29 @@ class DiningReservationServiceImplTest {
         verify(reservationRepository, never()).save(any());
     }
 
+    /** Half-open: a sitting that ends exactly as the next begins is not a clash. */
+    @Test
+    void abuttingSittingsDoNotClash() {
+        guestExists();
+        outletHolds(booking(11, LocalTime.of(17, 30), SEVEN_PM));
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(service.createReservation(request(LocalDate.now().plusDays(1))).getTime())
+                .isEqualTo(SEVEN_PM);
+    }
+
     @Test
     void onlyLiveBookingsBlockTheSlot() {
         guestExists();
-        slotAlreadyHeld(false);
+        outletHolds();
         when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.createReservation(request(LocalDate.now().plusDays(1)));
 
         // CANCELLED / COMPLETED / NOSHOW are excluded, so cancelling frees the slot again.
-        verify(reservationRepository).existsByGuestIdAndRestaurantOutletIgnoreCaseAndDateAndTimeAndStatusIn(
-                eq(4), eq(OUTLET), any(LocalDate.class), eq(SEVEN_PM),
-                eq(java.util.List.of(DiningResStatus.CONFIRMED, DiningResStatus.SEATED)));
+        verify(reservationRepository).findByRestaurantOutletIgnoreCaseAndDateAndStatusIn(
+                eq(OUTLET), any(LocalDate.class),
+                eq(List.of(DiningResStatus.CONFIRMED, DiningResStatus.SEATED)));
     }
 
     @Test

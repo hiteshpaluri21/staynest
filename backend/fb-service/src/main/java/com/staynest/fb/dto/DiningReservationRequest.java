@@ -19,6 +19,8 @@ public class DiningReservationRequest {
     private LocalDate date;
     @NotNull
     private LocalTime time;
+    /** Optional — defaults to a standard sitting after {@code time} when the caller omits it. */
+    private LocalTime endTime;
     @NotNull @Positive
     private Integer covers;
 }

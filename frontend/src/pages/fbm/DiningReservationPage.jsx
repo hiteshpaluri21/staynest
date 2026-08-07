@@ -11,6 +11,24 @@ import { statusBadge } from '../../utils/badges'
 
 const OUTLETS = ['The Garden Bistro', 'Sky Lounge', 'Poolside Bar', 'Rooftop Grill']
 
+// Matches DEFAULT_SITTING in DiningReservationServiceImpl, so the form shows the same end
+// time the server would pick for itself.
+const SITTING_MINUTES = 90
+
+/** "19:00" + 90 → "20:30". Clamped at the end of the day, as a booking is filed against one date. */
+const addMinutes = (time, minutes) => {
+  const [h, m] = String(time).split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return ''
+  const total = h * 60 + m + minutes
+  if (total >= 24 * 60) return '23:59'
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+/** Times come back as "20:30:00"; the seconds add nothing for a table booking. */
+const shortTime = (time) => (time ? String(time).slice(0, 5) : '—')
+
+const EMPTY_FORM = { restaurantOutlet: OUTLETS[0], date: '', time: '19:00', endTime: addMinutes('19:00', SITTING_MINUTES), covers: 2 }
+
 /**
  * Dining reservations follow the same split as front desk / housekeeping: the guest raises the
  * request from their own account, and F&B staff only work the queue (seat, then complete). Staff
@@ -24,7 +42,7 @@ export default function DiningReservationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [show, setShow] = useState(false)
-  const [form, setForm] = useState({ restaurantOutlet: OUTLETS[0], date: '', time: '19:00', covers: 2 })
+  const [form, setForm] = useState(EMPTY_FORM)
   const [saveErr, setSaveErr] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [actionErr, setActionErr] = useState('')
@@ -59,8 +77,16 @@ export default function DiningReservationPage() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  // Moving the start drags the end along, keeping the sitting the same length. The guest can
+  // still shorten or extend it afterwards.
+  const setStart = (time) => setForm(f => ({ ...f, time, endTime: addMinutes(time, SITTING_MINUTES) }))
+
+  // The server rejects this too; catching it here saves a round trip and reads better.
+  const endBeforeStart = Boolean(form.time && form.endTime && form.endTime <= form.time)
+
   const submit = async (e) => {
     e.preventDefault(); setSaveErr('')
+    if (endBeforeStart) { setSaveErr('The end time must be after the start time.'); return }
     try {
       await createDiningReservation({
         ...form,
@@ -69,7 +95,7 @@ export default function DiningReservationPage() {
         covers: Number(form.covers),
       })
       setShow(false)
-      setForm({ restaurantOutlet: OUTLETS[0], date: '', time: '19:00', covers: 2 })
+      setForm(EMPTY_FORM)
       load()
     } catch (err) { setSaveErr(err.message) }
   }
@@ -104,7 +130,7 @@ export default function DiningReservationPage() {
       {loading ? <Loader /> : error ? <div className="alert alert-danger">{error}</div> :
         items.length === 0 ? <EmptyState message={isGuest ? 'You have no dining reservations' : 'No dining reservations'} /> :
         <Table hover responsive className="align-middle">
-          <thead><tr><th>ID</th>{!isGuest && <th>Guest</th>}<th>Outlet</th><th>Date</th><th>Time</th><th>Covers</th><th>Status</th><th>Action</th></tr></thead>
+          <thead><tr><th>ID</th>{!isGuest && <th>Guest</th>}<th>Outlet</th><th>Date</th><th>From</th><th>Until</th><th>Covers</th><th>Status</th><th>Action</th></tr></thead>
           <tbody>
             {items.map(d => (
               <tr key={d.diningResId}>
@@ -112,7 +138,9 @@ export default function DiningReservationPage() {
                 {!isGuest && <td>{guestLabel(d.guestId)}</td>}
                 <td>{d.restaurantOutlet}</td>
                 <td>{d.date}</td>
-                <td>{d.time}</td>
+                <td>{shortTime(d.time)}</td>
+                {/* Bookings made before end times existed have none — those show a dash. */}
+                <td>{shortTime(d.endTime)}</td>
                 <td>{d.covers}</td>
                 <td><Badge bg={statusBadge(d.status)}>{d.status}</Badge></td>
                 <td>
@@ -135,7 +163,8 @@ export default function DiningReservationPage() {
         body={pendingCancel && (
           <p className="mb-0">
             Cancel the table for {pendingCancel.covers} at <strong>{pendingCancel.restaurantOutlet}</strong>
-            {' '}on {pendingCancel.date} at {pendingCancel.time}? This cannot be undone.
+            {' '}on {pendingCancel.date}, {shortTime(pendingCancel.time)}–{shortTime(pendingCancel.endTime)}?
+            {' '}This cannot be undone.
           </p>
         )}
         confirmLabel="Cancel reservation"
@@ -150,10 +179,21 @@ export default function DiningReservationPage() {
             {saveErr && <Alert variant="danger" className="py-2">{saveErr}</Alert>}
             <Form.Group className="mb-3"><Form.Label>Outlet</Form.Label><Form.Select value={form.restaurantOutlet} onChange={e => set('restaurantOutlet', e.target.value)}>{OUTLETS.map(o => <option key={o}>{o}</option>)}</Form.Select></Form.Group>
             <Row>
-              <Col xs={6} md={4}><Form.Group className="mb-3"><Form.Label>Date</Form.Label><Form.Control type="date" required min={new Date().toISOString().split('T')[0]} value={form.date} onChange={e => set('date', e.target.value)} /></Form.Group></Col>
-              <Col xs={6} md={4}><Form.Group className="mb-3"><Form.Label>Time</Form.Label><Form.Control type="time" required value={form.time} onChange={e => set('time', e.target.value)} /></Form.Group></Col>
-              <Col xs={12} md={4}><Form.Group className="mb-3"><Form.Label>Covers</Form.Label><Form.Control type="number" min="1" required value={form.covers} onChange={e => set('covers', e.target.value)} /></Form.Group></Col>
+              <Col xs={6} md={3}><Form.Group className="mb-3"><Form.Label>Date</Form.Label><Form.Control type="date" required min={new Date().toISOString().split('T')[0]} value={form.date} onChange={e => set('date', e.target.value)} /></Form.Group></Col>
+              <Col xs={6} md={3}><Form.Group className="mb-3"><Form.Label>From</Form.Label><Form.Control type="time" required value={form.time} onChange={e => setStart(e.target.value)} /></Form.Group></Col>
+              <Col xs={6} md={3}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Until</Form.Label>
+                  <Form.Control type="time" required value={form.endTime} isInvalid={endBeforeStart} onChange={e => set('endTime', e.target.value)} />
+                </Form.Group>
+              </Col>
+              <Col xs={6} md={3}><Form.Group className="mb-3"><Form.Label>Covers</Form.Label><Form.Control type="number" min="1" required value={form.covers} onChange={e => set('covers', e.target.value)} /></Form.Group></Col>
             </Row>
+            {endBeforeStart && <p className="small text-danger mb-2">The end time must be after the start time.</p>}
+            <p className="text-muted small mb-1">
+              The outlet is yours for this whole window, so nobody else can book it while you
+              have it. Pick a different time if the one you want is already taken.
+            </p>
             <p className="text-muted small mb-0">
               {activeStayId != null
                 ? `This booking will be linked to your current stay (${activeStayId}).`

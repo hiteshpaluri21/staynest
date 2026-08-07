@@ -40,6 +40,13 @@ public class DiningReservation {
     @Column(name = "Time", nullable = false)
     private LocalTime time;
 
+    /**
+     * When the table is given up again. Nullable because rows written before end times
+     * existed have none — readers fall back to a default sitting length.
+     */
+    @Column(name = "EndTime")
+    private LocalTime endTime;
+
     @Column(name = "Covers", nullable = false)
     private Integer covers;
 

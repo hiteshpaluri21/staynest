@@ -23,7 +23,9 @@ import java.util.stream.Collectors;
 import com.staynest.room.client.ReservationServiceClient;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class RoomServiceImpl implements RoomService {
@@ -84,19 +86,23 @@ public class RoomServiceImpl implements RoomService {
         return roomRepository.findByStatus(status).stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    /** Statuses that take a room out of the bookable inventory altogether. */
+    private static final Set<RoomStatus> OUT_OF_SERVICE =
+            EnumSet.of(RoomStatus.MAINTENANCE, RoomStatus.BLOCKED);
+
     /**
-     * Rooms that are physically available and not already committed for the given dates.
+     * Rooms that are not already committed for the given dates.
      *
-     * Reads as four steps: fetch the physical rooms, count what is booked per room type over
+     * Reads as four steps: take the bookable inventory, count what is booked per room type over
      * the window, subtract, and map. Each step is a method below.
      */
     @Override
     public List<RoomResponse> getAvailableRooms(String checkIn, String checkOut) {
-        List<Room> available = roomRepository.findByStatus(RoomStatus.AVAILABLE);
-
-        // With no dates there is no availability question to answer — return the physical rooms.
+        // With no dates there is no availability question to answer — report what is free
+        // right now, which is exactly what the AVAILABLE status means.
         if (checkIn == null || checkOut == null) {
-            return available.stream().map(this::mapToResponse).collect(Collectors.toList());
+            return roomRepository.findByStatus(RoomStatus.AVAILABLE).stream()
+                    .map(this::mapToResponse).collect(Collectors.toList());
         }
 
         LocalDate searchIn = LocalDate.parse(checkIn);
@@ -104,8 +110,25 @@ public class RoomServiceImpl implements RoomService {
 
         Map<Integer, Long> bookedCounts = countBookedByRoomType(fetchReservations(), searchIn, searchOut);
 
-        return takeUnbookedRooms(available, bookedCounts).stream()
+        return takeUnbookedRooms(bookableInventory(), bookedCounts).stream()
                 .map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Every room that could take a guest on some date — that is, everything except the rooms
+     * withdrawn from service. Deliberately includes rooms that are OCCUPIED or CLEANING today:
+     * a room's status describes *now*, while whether it is free for the requested window is
+     * decided by the reservations, below.
+     *
+     * This used to start from status AVAILABLE, which counted a check-in twice. The room left
+     * the pool as it turned OCCUPIED, and its reservation — now CHECKEDIN — still counted as
+     * booked, so the advertised count dropped by one when the room was reserved and again when
+     * the guest arrived. It also hid a room occupied today from a search for next month.
+     */
+    private List<Room> bookableInventory() {
+        return roomRepository.findAll().stream()
+                .filter(room -> !OUT_OF_SERVICE.contains(room.getStatus()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -148,7 +171,11 @@ public class RoomServiceImpl implements RoomService {
                         Collectors.counting()));
     }
 
-    /** Only confirmed and checked-in reservations occupy a room; cancelled ones free it. */
+    /**
+     * Only confirmed and checked-in reservations occupy a room; cancelled and checked-out ones
+     * free it. Both live states count exactly once, which is what keeps the number steady as a
+     * booking moves from CONFIRMED to CHECKEDIN.
+     */
     private boolean holdsARoom(Map<?, ?> reservation) {
         Object status = reservation.get("status");
         if (status == null) return false;
@@ -173,8 +200,8 @@ public class RoomServiceImpl implements RoomService {
      * Per room type, drops as many rooms as are already booked. Which specific rooms remain does
      * not matter — only how many — since a guest books a type and is assigned a room at check-in.
      */
-    private List<Room> takeUnbookedRooms(List<Room> available, Map<Integer, Long> bookedCounts) {
-        Map<Integer, List<Room>> roomsByType = available.stream()
+    private List<Room> takeUnbookedRooms(List<Room> inventory, Map<Integer, Long> bookedCounts) {
+        Map<Integer, List<Room>> roomsByType = inventory.stream()
                 .collect(Collectors.groupingBy(r -> r.getRoomType().getRoomTypeId()));
 
         List<Room> remaining = new ArrayList<>();

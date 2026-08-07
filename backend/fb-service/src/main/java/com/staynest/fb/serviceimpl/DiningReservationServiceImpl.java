@@ -17,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,18 +50,8 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         if (request.getStayId() != null) {
             validateStay(request.getStayId());
         }
-        // One table per guest, per outlet, per slot. Only CONFIRMED and SEATED bookings
-        // block a rebooking, so cancelling and booking the same slot again works.
-        boolean alreadyBooked = reservationRepository
-                .existsByGuestIdAndRestaurantOutletIgnoreCaseAndDateAndTimeAndStatusIn(
-                        request.getGuestId(), request.getRestaurantOutlet(),
-                        request.getDate(), request.getTime(),
-                        List.of(DiningResStatus.CONFIRMED, DiningResStatus.SEATED));
-        if (alreadyBooked) {
-            throw new BadRequestException("You already have a table at " + request.getRestaurantOutlet()
-                    + " on " + request.getDate() + " at " + request.getTime()
-                    + ". Cancel that booking first if you want to change it.");
-        }
+        LocalTime endTime = resolveEndTime(request.getTime(), request.getEndTime());
+        rejectClashingBooking(request, endTime);
 
         DiningReservation reservation = DiningReservation.builder()
                 .guestId(request.getGuestId())
@@ -67,6 +59,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
                 .restaurantOutlet(request.getRestaurantOutlet())
                 .date(request.getDate())
                 .time(request.getTime())
+                .endTime(endTime)
                 .covers(request.getCovers())
                 .build();
 
@@ -74,6 +67,74 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         log.info("Dining reservation created: {}", saved.getDiningResId());
         auditRecorder.record("CREATE", ENTITY, saved.getDiningResId());
         return mapToResponse(saved);
+    }
+
+    /** How long a table is held when the caller does not say. */
+    private static final Duration DEFAULT_SITTING = Duration.ofMinutes(90);
+
+    /** Bookings that still hold the outlet. A cancelled or completed sitting frees it. */
+    private static final List<DiningResStatus> LIVE_STATUSES =
+            List.of(DiningResStatus.CONFIRMED, DiningResStatus.SEATED);
+
+    /**
+     * The end of the sitting, defaulting to {@link #DEFAULT_SITTING} after the start.
+     *
+     * Rejects an end at or before the start, and one that runs past midnight — the booking is
+     * filed against a single date, so a sitting that crosses into the next day cannot be
+     * represented, let alone overlap-checked.
+     */
+    private LocalTime resolveEndTime(LocalTime start, LocalTime requestedEnd) {
+        if (requestedEnd == null) {
+            LocalTime end = start.plus(DEFAULT_SITTING);
+            // plus() wraps around midnight; a late booking is held until the end of the day.
+            return end.isAfter(start) ? end : LocalTime.MAX;
+        }
+        if (!requestedEnd.isAfter(start)) {
+            throw new BadRequestException("The end time (" + requestedEnd
+                    + ") must be after the start time (" + start + ")");
+        }
+        return requestedEnd;
+    }
+
+    /**
+     * Holds the outlet for the whole sitting: while one party has it, nobody else may book an
+     * overlapping window there, and the same guest cannot double-book either.
+     *
+     * The outlet is treated as a single exclusive space rather than a set of tables — there is
+     * no table inventory in the model to allocate against.
+     */
+    private void rejectClashingBooking(DiningReservationRequest request, LocalTime endTime) {
+        reservationRepository
+                .findByRestaurantOutletIgnoreCaseAndDateAndStatusIn(
+                        request.getRestaurantOutlet(), request.getDate(), LIVE_STATUSES)
+                .stream()
+                .filter(existing -> overlaps(existing, request.getTime(), endTime))
+                .findFirst()
+                .ifPresent(clash -> {
+                    String window = clash.getTime() + "–" + endOf(clash);
+                    if (clash.getGuestId().equals(request.getGuestId())) {
+                        throw new BadRequestException("You already have a table at "
+                                + request.getRestaurantOutlet() + " on " + request.getDate()
+                                + " from " + window + ". Cancel that booking first if you want to change it.");
+                    }
+                    throw new BadRequestException(request.getRestaurantOutlet() + " is already booked on "
+                            + request.getDate() + " from " + window
+                            + ". Please choose a time outside that window.");
+                });
+    }
+
+    /** Half-open overlap: a sitting that ends exactly as another begins does not clash. */
+    private boolean overlaps(DiningReservation existing, LocalTime start, LocalTime end) {
+        return existing.getTime().isBefore(end) && endOf(existing).isAfter(start);
+    }
+
+    /** An existing booking's end, falling back to the default sitting for rows written without one. */
+    private LocalTime endOf(DiningReservation reservation) {
+        if (reservation.getEndTime() != null) {
+            return reservation.getEndTime();
+        }
+        LocalTime end = reservation.getTime().plus(DEFAULT_SITTING);
+        return end.isAfter(reservation.getTime()) ? end : LocalTime.MAX;
     }
 
     @Override
@@ -186,6 +247,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
                 .restaurantOutlet(dr.getRestaurantOutlet())
                 .date(dr.getDate())
                 .time(dr.getTime())
+                .endTime(dr.getEndTime())
                 .covers(dr.getCovers())
                 .status(dr.getStatus())
                 .build();

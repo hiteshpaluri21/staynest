@@ -1,5 +1,6 @@
 package com.staynest.fb.entity;
 
+import com.staynest.fb.enums.FoodType;
 import com.staynest.fb.enums.MenuCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -33,6 +34,14 @@ public class MenuItem {
 
     @Column(name = "Price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+    /**
+     * Nullable because items created before this column existed have no value — the menu
+     * shows those as unspecified rather than guessing that they are vegetarian.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "FoodType", length = 10)
+    private FoodType foodType;
 
     @Column(name = "IsAvailable")
     @Builder.Default

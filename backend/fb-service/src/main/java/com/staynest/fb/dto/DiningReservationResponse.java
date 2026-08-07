@@ -16,6 +16,7 @@ public class DiningReservationResponse {
     private String restaurantOutlet;
     private LocalDate date;
     private LocalTime time;
+    private LocalTime endTime;
     private Integer covers;
     private DiningResStatus status;
 }

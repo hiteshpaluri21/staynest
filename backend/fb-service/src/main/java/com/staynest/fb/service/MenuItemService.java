@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 public interface MenuItemService {
     MenuItemResponse addMenuItem(MenuItemRequest request);
     MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request);
+    void deleteMenuItem(Integer id);
     MenuItemResponse getMenuItemById(Integer id);
     List<MenuItemResponse> getAllMenuItems();
     List<MenuItemResponse> getMenuItemsByCategory(MenuCategory category);
