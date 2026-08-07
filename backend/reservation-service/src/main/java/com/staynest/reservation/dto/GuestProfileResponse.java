@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class GuestProfileResponse {
     private Integer guestId;
+    /** The iam-service account behind this guest, so other services can address them. */
+    private Integer userId;
     private String name;
     private String email;
     private String phone;

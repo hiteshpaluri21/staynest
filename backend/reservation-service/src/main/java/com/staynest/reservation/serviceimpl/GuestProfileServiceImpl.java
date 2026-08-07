@@ -11,6 +11,7 @@ import com.staynest.reservation.exception.BadRequestException;
 import com.staynest.reservation.exception.ResourceNotFoundException;
 import com.staynest.reservation.repository.GuestProfileRepository;
 import com.staynest.reservation.service.GuestProfileService;
+import com.staynest.reservation.service.GuestUserResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,9 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     @Autowired(required = false)
     private IamServiceClient iamServiceClient;
 
+    @Autowired
+    private GuestUserResolver guestUserResolver;
+
     @Override
     @Transactional
     public GuestProfileResponse getOrCreateCurrentGuest() {
@@ -58,6 +62,8 @@ public class GuestProfileServiceImpl implements GuestProfileService {
             gp.setName(valueOf(iamUser, "name", localPart(email)));
             gp.setEmail(email);
             gp.setPhone(valueOf(iamUser, "phone", null));
+            // The account is right here in the payload, so the link is recorded up front.
+            gp.setUserId(intValueOf(iamUser, "userId"));
             gp.setStatus(GuestStatus.ACTIVE);
             gp.setLoyaltyTier(LoyaltyTier.NONE);
             log.info("Provisioning GuestProfile for authenticated user {}", email);
@@ -83,6 +89,12 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     private static String localPart(String email) {
         int at = email.indexOf('@');
         return at > 0 ? email.substring(0, at) : email;
+    }
+
+    /** Reads a numeric field from the IAM user payload, or null when absent. */
+    private static Integer intValueOf(Map<String, Object> user, String key) {
+        Object v = user != null ? user.get(key) : null;
+        return v instanceof Number n ? n.intValue() : null;
     }
 
     /** Reads a string field from the IAM user payload, falling back when absent or blank. */
@@ -129,6 +141,8 @@ public class GuestProfileServiceImpl implements GuestProfileService {
         GuestProfile guest = new GuestProfile();
         guest.setName(request.getName());
         guest.setEmail(request.getEmail());
+        // Null for a walk-in with no login — they simply get no notifications.
+        guest.setUserId(guestUserResolver.lookupByEmail(request.getEmail()));
         guest.setPhone(request.getPhone());
         guest.setNationality(request.getNationality());
         guest.setIdDocumentType(request.getIdDocumentType());
@@ -219,6 +233,9 @@ public class GuestProfileServiceImpl implements GuestProfileService {
     private GuestProfileResponse mapToResponse(GuestProfile guest) {
         GuestProfileResponse response = new GuestProfileResponse();
         response.setGuestId(guest.getGuestId());
+        // Resolved and cached here, so every service reading a guest gets the account to
+        // address without having to know that email is the join between the two key spaces.
+        response.setUserId(guestUserResolver.userIdFor(guest));
         response.setName(guest.getName());
         response.setEmail(guest.getEmail());
         response.setPhone(guest.getPhone());

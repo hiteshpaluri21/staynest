@@ -26,7 +26,9 @@ export default function AddChargeModal({ show, stayId, item, onClose, onSaved })
   const submit = async (e) => {
     e.preventDefault(); setSaving(true); setError('')
     try {
-      const payload = { ...form, amount: Number(form.amount), postedBy: user?.userId || 1 }
+      // null, never a fallback id — defaulting to user 1 credited the charge to whoever that
+      // happens to be. frontdesk-service records "unknown" for a null poster.
+      const payload = { ...form, amount: Number(form.amount), postedBy: user?.userId ?? null }
       if (isEdit) await updateFolioItem(stayId, item.folioItemId, payload)
       else await postFolioItem(stayId, payload)
       onSaved()

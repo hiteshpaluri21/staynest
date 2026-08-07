@@ -12,6 +12,7 @@ import com.staynest.reservation.exception.BadRequestException;
 import com.staynest.reservation.exception.ResourceNotFoundException;
 import com.staynest.reservation.repository.GuestProfileRepository;
 import com.staynest.reservation.repository.ReservationRepository;
+import com.staynest.reservation.service.GuestUserResolver;
 import com.staynest.reservation.service.ReservationService;
 import feign.FeignException;
 import org.slf4j.Logger;
@@ -57,6 +58,9 @@ public class ReservationServiceImpl implements ReservationService {
 
 	@Autowired
 	private NotificationServiceClient notificationServiceClient;
+
+	@Autowired
+	private GuestUserResolver guestUserResolver;
 
 	/**
 	 * Fire-and-forget notification; a failure here must never fail the primary
@@ -224,7 +228,10 @@ public class ReservationServiceImpl implements ReservationService {
 		Reservation saved = reservationRepository.save(reservation);
 		log.info("Reservation created: {}", saved.getReservationId());
 		auditRecorder.record("CREATE", ENTITY, saved.getReservationId());
-		notify(guest.getGuestId(), "RESERVATION", "Your reservation #" + saved.getReservationId() + " is confirmed for "
+		// The guest's IAM account, not their GuestID — notifications are addressed by UserID, so
+		// passing the GuestID delivered this to whichever unrelated account shared that number.
+		notify(guestUserResolver.userIdFor(guest), "RESERVATION",
+				"Your reservation #" + saved.getReservationId() + " is confirmed for "
 				+ saved.getCheckInDate() + " to " + saved.getCheckOutDate() + ".");
 		// Alert front-desk staff of the new booking so it appears in their inbox.
 		notifyStaffByRole("FRONTDESK", "FRONTDESK", "New reservation #" + saved.getReservationId() + " ("
@@ -291,6 +298,12 @@ public class ReservationServiceImpl implements ReservationService {
 		Reservation updated = reservationRepository.save(reservation);
 		log.info("Reservation {} cancelled", id);
 		auditRecorder.record("CANCEL", ENTITY, id);
+		// A booking that confirms by notification should cancel by one too — and front desk
+		// need to know a room has come back, since it changes what they can sell.
+		notify(guestUserResolver.userIdFor(reservation.getGuest()), "RESERVATION",
+				"Your reservation #" + id + " has been cancelled.");
+		notifyStaffByRole("FRONTDESK", "FRONTDESK", "Reservation #" + id + " ("
+				+ reservation.getGuest().getName() + ") was cancelled.");
 		return mapToResponse(updated);
 	}
 

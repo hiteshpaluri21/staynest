@@ -25,4 +25,14 @@ public final class CurrentUser {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null && auth.getPrincipal() instanceof String email ? email : null;
     }
+
+    /** Whether the acting user holds a role, e.g. {@code hasRole("ADMIN")}. */
+    public static boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getAuthorities() == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(granted -> ("ROLE_" + role).equals(granted.getAuthority()));
+    }
 }

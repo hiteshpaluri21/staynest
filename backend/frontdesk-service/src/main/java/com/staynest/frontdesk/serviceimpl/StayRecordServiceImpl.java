@@ -58,6 +58,37 @@ public class StayRecordServiceImpl implements StayRecordService {
         }
     }
 
+    /**
+     * Notifies the guest behind a stay.
+     *
+     * A stay carries a guestId, which is a reservation-service profile id — not the IAM userId
+     * notifications are addressed by. These two were being used interchangeably, so check-in,
+     * folio and check-out messages went to whichever account happened to share the number and
+     * the guest saw none of them. Resolved through the guest profile, which now records it.
+     */
+    private void notifyGuest(Integer guestId, String message) {
+        if (guestId == null) return;
+        Integer userId = null;
+        try {
+            var resp = reservationServiceClient.getGuestById(guestId);
+            Object id = resp != null && resp.getData() != null ? resp.getData().get("userId") : null;
+            if (id instanceof Number n) {
+                userId = n.intValue();
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve the account for guest {}, so no notification was sent: {}",
+                    guestId, e.getMessage());
+            return;
+        }
+        if (userId == null) {
+            // A walk-in profile with no login. Nothing to deliver to, and guessing is what
+            // caused the mis-delivery in the first place.
+            log.info("Guest {} has no linked account; skipping notification", guestId);
+            return;
+        }
+        notify(userId, message);
+    }
+
     @Override
     @Transactional
     public StayRecordResponse checkIn(CheckInRequest request) {
@@ -119,7 +150,7 @@ public class StayRecordServiceImpl implements StayRecordService {
             log.warn("Failed to update reservation status: {}", e.getMessage());
         }
 
-        notify(guestId, "Welcome! You are checked in to room #" + request.getRoomId() + ".");
+        notifyGuest(guestId, "Welcome! You are checked in to room #" + request.getRoomId() + ".");
 
         log.info("Check-in completed for reservation: {}", request.getReservationId());
         auditRecorder.record("CHECKIN", ENTITY, saved.getStayId());
@@ -151,7 +182,7 @@ public class StayRecordServiceImpl implements StayRecordService {
         stay.setFolioBalance(current.add(FolioItemServiceImpl.signedAmount(request.getChargeType(), request.getAmount())));
         StayRecord updated = stayRecordRepository.save(stay);
 
-        notify(stay.getGuestId(), "A charge of " + request.getAmount() + " (" + request.getChargeType()
+        notifyGuest(stay.getGuestId(), "A charge of " + request.getAmount() + " (" + request.getChargeType()
                 + ") was posted to your folio.");
 
         log.info("Folio item posted for stay: {}, amount: {}", stayId, request.getAmount());
@@ -217,7 +248,7 @@ public class StayRecordServiceImpl implements StayRecordService {
             log.warn("Failed to update reservation status: {}", e.getMessage());
         }
 
-        notify(stay.getGuestId(), "You have been checked out. Final folio total: " + total + ".");
+        notifyGuest(stay.getGuestId(), "You have been checked out. Final folio total: " + total + ".");
 
         log.info("Check-out completed for stay: {}, total folio: {}", stayId, total);
         auditRecorder.record("CHECKOUT", ENTITY, stayId);

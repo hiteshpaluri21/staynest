@@ -3,6 +3,8 @@ package com.staynest.fb.serviceimpl;
 import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.client.FeignErrors;
 import com.staynest.fb.client.FrontDeskServiceClient;
+import com.staynest.fb.client.IamServiceClient;
+import com.staynest.fb.client.NotificationServiceClient;
 import com.staynest.fb.client.ReservationServiceClient;
 import com.staynest.fb.dto.DiningReservationRequest;
 import com.staynest.fb.dto.DiningReservationResponse;
@@ -21,6 +23,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,6 +39,8 @@ public class DiningReservationServiceImpl implements DiningReservationService {
     private final DiningReservationRepository reservationRepository;
     private final ReservationServiceClient reservationServiceClient;
     private final FrontDeskServiceClient frontDeskServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
+    private final IamServiceClient iamServiceClient;
 
     @Override
     @Transactional
@@ -44,8 +49,8 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         if (request.getDate() == null || request.getDate().isBefore(LocalDate.now())) {
             throw new BadRequestException("Reservation date cannot be in the past");
         }
-        // The guest must exist.
-        validateGuest(request.getGuestId());
+        // The guest must exist. Their profile also carries the account to notify.
+        Map<String, Object> guest = validateGuest(request.getGuestId());
         // The stay is optional, but if supplied it must be a real stay.
         if (request.getStayId() != null) {
             validateStay(request.getStayId());
@@ -66,6 +71,16 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         DiningReservation saved = reservationRepository.save(reservation);
         log.info("Dining reservation created: {}", saved.getDiningResId());
         auditRecorder.record("CREATE", ENTITY, saved.getDiningResId());
+
+        // Booking a table sent nothing to anyone — the guest got no confirmation and F&B had to
+        // notice the new row themselves. Both now mirror how a room booking is announced.
+        String window = saved.getTime() + "–" + saved.getEndTime();
+        notify(accountFor(guest), "Your table for " + saved.getCovers() + " at "
+                + saved.getRestaurantOutlet() + " is confirmed for " + saved.getDate()
+                + ", " + window + ".");
+        notifyFbStaff("New table booked at " + saved.getRestaurantOutlet() + " on "
+                + saved.getDate() + ", " + window + " for " + saved.getCovers()
+                + " (booking #" + saved.getDiningResId() + ").");
         return mapToResponse(saved);
     }
 
@@ -146,6 +161,15 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         DiningReservation updated = reservationRepository.save(reservation);
         log.info("Dining reservation {} status updated to {}", id, status);
         auditRecorder.record("UPDATE_STATUS", ENTITY, id);
+        // Only the states the guest would want to hear about; COMPLETED needs no announcement,
+        // as they were at the table for it.
+        if (status == DiningResStatus.SEATED) {
+            notify(accountFor(updated.getGuestId()), "Your table at "
+                    + updated.getRestaurantOutlet() + " is ready — please come through.");
+        } else if (status == DiningResStatus.NOSHOW) {
+            notify(accountFor(updated.getGuestId()), "Your table at " + updated.getRestaurantOutlet()
+                    + " on " + updated.getDate() + " was released as a no-show.");
+        }
         return mapToResponse(updated);
     }
 
@@ -172,6 +196,11 @@ public class DiningReservationServiceImpl implements DiningReservationService {
         DiningReservation updated = reservationRepository.save(reservation);
         log.info("Dining reservation {} cancelled", id);
         auditRecorder.record("CANCEL", ENTITY, id);
+        // The slot is free again, which F&B need to know since it changes what they can seat.
+        notify(accountFor(updated.getGuestId()), "Your table at " + updated.getRestaurantOutlet()
+                + " on " + updated.getDate() + " has been cancelled.");
+        notifyFbStaff("Booking #" + id + " at " + updated.getRestaurantOutlet() + " on "
+                + updated.getDate() + " was cancelled — the slot is free again.");
         return mapToResponse(updated);
     }
 
@@ -200,7 +229,12 @@ public class DiningReservationServiceImpl implements DiningReservationService {
                 .map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    private void validateGuest(Integer guestId) {
+    /**
+     * Confirms the guest exists and returns their profile, which carries the IAM userId that
+     * notifications are addressed to. A dining reservation's guestId is a reservation-service
+     * profile id, so it must never be used as a userId directly.
+     */
+    private Map<String, Object> validateGuest(Integer guestId) {
         if (guestId == null) {
             throw new BadRequestException("Guest ID is required");
         }
@@ -209,6 +243,7 @@ public class DiningReservationServiceImpl implements DiningReservationService {
             if (resp == null || resp.getData() == null) {
                 throw new BadRequestException("Invalid Guest ID: " + guestId + " (no such guest)");
             }
+            return resp.getData();
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
@@ -218,6 +253,54 @@ public class DiningReservationServiceImpl implements DiningReservationService {
             log.error("reservation-service call failed while validating Guest ID {}", guestId, e);
             throw new BadRequestException("Unable to validate Guest ID " + guestId
                     + " (reservation-service error: " + e.getMessage() + ")");
+        }
+    }
+
+    /** Fire-and-forget notification; a failure here must never fail the primary action. */
+    private void notify(Integer userId, String message) {
+        if (userId == null) return;
+        try {
+            notificationServiceClient.create(Map.of(
+                    "userId", userId, "category", "FB", "message", message));
+        } catch (Exception e) {
+            log.warn("Failed to send FB notification to user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /** Fan out to every active F&B manager, so a new booking lands in their queue. Best-effort. */
+    private void notifyFbStaff(String message) {
+        try {
+            var resp = iamServiceClient.getUsersByRole("FBMANAGER");
+            var staff = resp != null ? resp.getData() : null;
+            if (staff == null) return;
+            for (var u : staff) {
+                Object id = u.get("userId");
+                if (id instanceof Number n) {
+                    notify(n.intValue(), message);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to resolve FBMANAGER staff for notification: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * The IAM account behind a guest profile, or null when there is none — a walk-in with no
+     * login. Read off the profile rather than guessed from the guestId.
+     */
+    private static Integer accountFor(Map<String, Object> guest) {
+        Object id = guest != null ? guest.get("userId") : null;
+        return id instanceof Number n ? n.intValue() : null;
+    }
+
+    /** Re-reads the guest to address a booking made earlier. */
+    private Integer accountFor(Integer guestId) {
+        try {
+            var resp = reservationServiceClient.getGuestById(guestId);
+            return accountFor(resp != null ? resp.getData() : null);
+        } catch (Exception e) {
+            log.warn("Could not resolve the account for guest {}: {}", guestId, e.getMessage());
+            return null;
         }
     }
 

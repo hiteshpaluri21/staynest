@@ -30,6 +30,17 @@ public class GuestProfile {
     @Column(name = "Email", nullable = false, unique = true, length = 150)
     private String email;
 
+    /**
+     * The iam-service user this profile belongs to, matched on email.
+     *
+     * GuestID and UserID are separate key spaces, and nothing recorded which guest was which
+     * account — so anything addressed to a guest (notifications, above all) had to guess, and
+     * guessed by passing the GuestID as a UserID. Nullable: a walk-in profile created by staff
+     * has no login, and rows predating this column are filled in on first read.
+     */
+    @Column(name = "UserID")
+    private Integer userId;
+
     @Column(name = "Phone", length = 20)
     private String phone;
 

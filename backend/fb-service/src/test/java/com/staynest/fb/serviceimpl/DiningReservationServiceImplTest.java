@@ -2,6 +2,8 @@ package com.staynest.fb.serviceimpl;
 
 import com.staynest.fb.audit.AuditRecorder;
 import com.staynest.fb.client.FrontDeskServiceClient;
+import com.staynest.fb.client.IamServiceClient;
+import com.staynest.fb.client.NotificationServiceClient;
 import com.staynest.fb.client.ReservationServiceClient;
 import com.staynest.fb.dto.ApiResponse;
 import com.staynest.fb.dto.DiningReservationRequest;
@@ -11,6 +13,7 @@ import com.staynest.fb.exception.BadRequestException;
 import com.staynest.fb.repository.DiningReservationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,15 +50,21 @@ class DiningReservationServiceImplTest {
     private static final String OUTLET = "Sky Lounge";
     private static final LocalTime SEVEN_PM = LocalTime.of(19, 0);
 
+    /** Guest profile 4 belongs to IAM account 77 — deliberately different numbers. */
+    private static final int GUEST_ID = 4;
+    private static final int GUEST_ACCOUNT = 77;
+
     @Mock private DiningReservationRepository reservationRepository;
     @Mock private AuditRecorder auditRecorder;
     @Mock private ReservationServiceClient reservationServiceClient;
     @Mock private FrontDeskServiceClient frontDeskServiceClient;
+    @Mock private NotificationServiceClient notificationServiceClient;
+    @Mock private IamServiceClient iamServiceClient;
     @InjectMocks private DiningReservationServiceImpl service;
 
     private DiningReservationRequest request(LocalDate date) {
         DiningReservationRequest req = new DiningReservationRequest();
-        req.setGuestId(4);
+        req.setGuestId(GUEST_ID);
         req.setRestaurantOutlet(OUTLET);
         req.setDate(date);
         req.setTime(SEVEN_PM);
@@ -65,7 +75,18 @@ class DiningReservationServiceImplTest {
     /** Guest validation goes out over Feign; a valid guest is the default for these tests. */
     private void guestExists() {
         when(reservationServiceClient.getGuestById(anyInt()))
-                .thenReturn(ApiResponse.success(Map.of("guestId", 4)));
+                .thenReturn(ApiResponse.success(Map.of("guestId", GUEST_ID, "userId", GUEST_ACCOUNT)));
+    }
+
+    /** A guest profile with no login, e.g. one staff typed in for a walk-in. */
+    private void guestHasNoAccount() {
+        when(reservationServiceClient.getGuestById(anyInt()))
+                .thenReturn(ApiResponse.success(Map.of("guestId", GUEST_ID)));
+    }
+
+    /** The payload sent to notification-service for the given recipient. */
+    private static Map<String, Object> notificationTo(int userId, String message) {
+        return Map.of("userId", userId, "category", "FB", "message", message);
     }
 
     /** What the outlet already holds that day. An empty list means the outlet is free. */
@@ -169,6 +190,83 @@ class DiningReservationServiceImplTest {
         verify(reservationRepository).findByRestaurantOutletIgnoreCaseAndDateAndStatusIn(
                 eq(OUTLET), any(LocalDate.class),
                 eq(List.of(DiningResStatus.CONFIRMED, DiningResStatus.SEATED)));
+    }
+
+    // ----------------------------------------------------------------- notifications --
+
+    /**
+     * The regression: notifications are addressed by IAM userId, and the guestId is a different
+     * key space. Sending the guestId delivered the confirmation to whichever unrelated account
+     * shared that number, and the guest got nothing.
+     */
+    @Test
+    void theGuestIsNotifiedByAccountIdNotGuestId() {
+        guestExists();
+        outletHolds();
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.createReservation(request(LocalDate.now().plusDays(1)));
+
+        ArgumentCaptor<Map<String, Object>> sent = ArgumentCaptor.forClass(Map.class);
+        verify(notificationServiceClient, atLeastOnce()).create(sent.capture());
+        assertThat(sent.getAllValues())
+                .as("the guest's account is notified")
+                .anyMatch(n -> GUEST_ACCOUNT == (Integer) n.get("userId"))
+                .as("the guest profile id is never used as a recipient")
+                .noneMatch(n -> GUEST_ID == (Integer) n.get("userId"));
+    }
+
+    @Test
+    void bookingATableConfirmsItToTheGuest() {
+        guestExists();
+        outletHolds();
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.createReservation(request(LocalDate.now().plusDays(1)));
+
+        verify(notificationServiceClient).create(notificationTo(GUEST_ACCOUNT,
+                "Your table for 2 at " + OUTLET + " is confirmed for "
+                        + LocalDate.now().plusDays(1) + ", 19:00–20:30."));
+    }
+
+    /** F&B staff work the queue, so a new booking has to reach them too. */
+    @Test
+    void bookingATableAlertsFbStaff() {
+        guestExists();
+        outletHolds();
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(iamServiceClient.getUsersByRole("FBMANAGER"))
+                .thenReturn(ApiResponse.success(List.of(Map.of("userId", 12))));
+
+        service.createReservation(request(LocalDate.now().plusDays(1)));
+
+        ArgumentCaptor<Map<String, Object>> sent = ArgumentCaptor.forClass(Map.class);
+        verify(notificationServiceClient, atLeastOnce()).create(sent.capture());
+        assertThat(sent.getAllValues()).anyMatch(n -> Integer.valueOf(12).equals(n.get("userId")));
+    }
+
+    /** Nobody to deliver to, and guessing is what caused the mis-delivery. */
+    @Test
+    void aGuestWithNoAccountIsNotNotifiedAtAll() {
+        guestHasNoAccount();
+        outletHolds();
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.createReservation(request(LocalDate.now().plusDays(1)));
+
+        verify(notificationServiceClient, never()).create(any());
+    }
+
+    /** A notification-service outage must not cost the guest their table. */
+    @Test
+    void aFailedNotificationDoesNotFailTheBooking() {
+        guestExists();
+        outletHolds();
+        when(reservationRepository.save(any(DiningReservation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(notificationServiceClient.create(any())).thenThrow(new RuntimeException("notification-service down"));
+
+        assertThat(service.createReservation(request(LocalDate.now().plusDays(1))).getRestaurantOutlet())
+                .isEqualTo(OUTLET);
     }
 
     @Test
