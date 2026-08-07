@@ -42,6 +42,15 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                /*
+                 * The public hotel site at "/" lists the room types and their rates, and a
+                 * visitor has no account — so reading them cannot require one. This is the
+                 * same information any hotel prints on its own website.
+                 *
+                 * GET only: creating, editing and withdrawing a room type stay ADMIN-only
+                 * through @PreAuthorize on RoomTypeController.
+                 */
+                .requestMatchers(HttpMethod.GET, "/api/room-types", "/api/room-types/**").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

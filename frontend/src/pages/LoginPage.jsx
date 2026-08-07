@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { homeFor } from '../utils/home'
 
 export default function LoginPage() {
 
@@ -34,7 +33,12 @@ export default function LoginPage() {
       }
       const data = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
       login(data)
-      navigate(homeFor(data.role))
+      /*
+       * Signing in lands on the public hotel site, not straight into a console. The header
+       * there shows who you are and its "My Dashboard" item goes to homeFor(role), so the
+       * console is one click away — and sign-in and sign-out now end up in the same place.
+       */
+      navigate('/')
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {

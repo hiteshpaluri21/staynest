@@ -90,6 +90,12 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Bootstrap's reboot does not cap image width — only the .img-fluid helper does — so a photo
+   dropped into a container narrower than itself pushes the whole page sideways. */
+img {
+    max-width: 100%;
+}
+
 /* Only colours transition, so switching themes doesn't animate layout. */
 body,
 .sidebar,
@@ -115,6 +121,9 @@ h1, h2, h3, h4, h5, h6 {
 .app-layout {
     display: flex;
     min-height: 100vh;
+    /* On a phone, 100vh is the height with the browser chrome hidden, so a "full height" page
+       actually runs off the bottom until you scroll. dvh is the height you can really see. */
+    min-height: 100dvh;
 }
 
 .main-content {
@@ -649,11 +658,58 @@ h1, h2, h3, h4, h5, h6 {
         var(--sn-surface-2);
     border-bottom: 1px solid var(--sn-border);
     /* Tall enough to feel like a hotel hero, never so tall it pushes the content
-       off a laptop or a phone in landscape. */
+       off a laptop or a phone in landscape. dvh so a phone's address bar does not
+       make it taller than the screen. */
     min-height: min(76vh, 640px);
+    min-height: min(76dvh, 640px);
     display: flex;
     align-items: center;
     padding: clamp(2.5rem, 7vw, 6rem) 0;
+}
+
+/* Copy on the left, artwork on the right — the right half used to be empty space.
+   One column until lg, where there is room for the picture without cramping the headline. */
+.hero-layout {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: center;
+}
+
+.hero-copy {
+    min-width: 0;
+}
+
+.hero-art {
+    /* Ordered after the copy in the markup, so it stacks underneath on a phone. */
+    display: flex;
+    justify-content: center;
+}
+
+.hero-art img {
+    width: 100%;
+    max-width: 34rem;
+    height: auto;
+    border-radius: var(--sn-radius);
+    border: 1px solid var(--sn-border);
+    box-shadow: 0 18px 40px -24px rgba(15, 30, 55, .55);
+}
+
+@media (min-width: 992px) {
+    .hero-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    /* The headline no longer has to hold the full width on its own. */
+    .hero-copy h1 {
+        max-width: 16ch;
+    }
+}
+
+/* The artwork earns its place on a wide screen; on a phone it only costs a scroll. */
+@media (max-width: 575.98px) {
+    .hero-art {
+        display: none;
+    }
 }
 
 .hero h1 {
@@ -787,17 +843,62 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid var(--sn-border);
     border-radius: var(--sn-radius);
     overflow: hidden;
+    transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
 }
 
-/* Stands in for room photography. Swap for an <img> when real assets exist. */
+.room-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(var(--bs-primary-rgb), .45);
+    box-shadow: 0 22px 44px -28px rgba(15, 30, 55, .55);
+}
+
+.room-card:hover .room-photo img {
+    transform: scale(1.05);
+}
+
+/* All four room types on one row from lg up. Below that they wrap two-up, then one-up —
+   a 4-column row on a tablet leaves each card too narrow for the rate to sit beside the
+   button. Not .auto-grid, which would reflow to 3 + 1 at some widths. */
+.room-row {
+    display: grid;
+    gap: clamp(1rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+    .room-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .room-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* Holds the room artwork, with the type name overlaid on a gradient so it stays legible
+   whatever the picture behind it. */
 .room-photo {
+    position: relative;
     aspect-ratio: 3 / 2;
-    background:
-        linear-gradient(135deg, rgba(var(--bs-primary-rgb), .85), rgba(var(--bs-primary-rgb), .45)),
-        var(--sn-surface-2);
-    display: flex;
-    align-items: flex-end;
-    padding: 1rem;
+    background: var(--sn-surface-2);
+    overflow: hidden;
+}
+
+.room-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .6s ease;
+}
+
+.room-photo-label {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1.6rem 1rem .7rem;
+    background: linear-gradient(to top, rgba(9, 20, 36, .82), transparent);
     color: #fff;
     font-weight: 700;
     letter-spacing: -.01em;
@@ -845,6 +946,9 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    /* Four cards to a row leaves ~240px inside each; "₹18,500 / night" and a Book button
+       will not both fit, so the button drops beneath the price instead of overflowing. */
+    flex-wrap: wrap;
     gap: .75rem;
     padding-top: .5rem;
 }
@@ -862,42 +966,294 @@ h1, h2, h3, h4, h5, h6 {
 
 /* -------------------------------------------------------------- dining ---- */
 
-.dining-card {
+/*
+ * Four identical tiles. The fixed aspect ratio is what keeps them the same size whatever the
+ * length of the copy — the old cards grew to fit their text and ended up ragged.
+ */
+.dining-row {
+    display: grid;
+    gap: clamp(1rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+    .dining-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .dining-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.dining-tile {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--sn-radius);
+    border: 1px solid var(--sn-border);
+    overflow: hidden;
+    background: var(--sn-surface-2);
+    cursor: pointer;
+    transition: transform .35s ease, box-shadow .35s ease;
+}
+
+.dining-tile:hover,
+.dining-tile:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 44px -26px rgba(15, 30, 55, .6);
+}
+
+/* These tiles are focusable so the keyboard and touch can open them, so they need a focus
+   ring that is actually visible — the lift alone is far too subtle to navigate by. */
+.dining-tile:focus-visible {
+    outline: 2px solid var(--sn-accent);
+    outline-offset: 3px;
+}
+
+.dining-tile img {
+    width: 100%;
+    height: 100%;
+    /* Some of these are portrait shots, so they crop to the tile rather than letterbox. */
+    object-fit: cover;
+    display: block;
+    transition: transform .6s ease;
+}
+
+.dining-tile:hover img,
+.dining-tile:focus-visible img {
+    transform: scale(1.06);
+}
+
+/*
+ * The name is always legible; the description is folded away until the tile is hovered.
+ * :focus-visible is there so a tap or the keyboard opens it too — hover alone would leave
+ * touch users unable to read any of this.
+ */
+.dining-veil {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1.15rem 1.15rem 1.25rem;
+    background: linear-gradient(to top, rgba(9, 20, 36, .94) 25%, rgba(9, 20, 36, .72) 60%, transparent);
+    color: #fff;
+}
+
+.dining-veil .kind {
+    display: block;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--sn-accent);
+    font-weight: 700;
+    margin-bottom: .3rem;
+}
+
+.dining-veil h3 {
+    font-size: 1.08rem;
+    font-weight: 650;
+    margin: 0;
+    color: #fff;
+}
+
+.dining-veil p {
+    margin: 0;
+    font-size: .88rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, .88);
+    /* Collapsed rather than hidden, so it animates open instead of appearing abruptly. */
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height .4s ease, opacity .3s ease, margin-top .4s ease;
+}
+
+.dining-tile:hover .dining-veil p,
+.dining-tile:focus-visible .dining-veil p,
+.dining-tile:focus-within .dining-veil p {
+    max-height: 8rem;
+    opacity: 1;
+    margin-top: .5rem;
+}
+
+/* ------------------------------------------------- about / policy slides ---- */
+
+.story-carousel {
     background: var(--sn-surface);
     border: 1px solid var(--sn-border);
     border-radius: var(--sn-radius);
-    padding: 1.35rem;
+    overflow: hidden;
+}
+
+/*
+ * One fixed height for every slide, so the carousel never changes size as it turns over and
+ * the whole slide is on screen without scrolling. An explicit height — not min-height — is
+ * what guarantees both of those: min-height let the taller slide win and shifted the page
+ * under the reader mid-transition.
+ *
+ * The photograph is the background of the slide rather than a column beside it. That is one
+ * layout at every width instead of two, which is why the height can be pinned at all: a
+ * stacked photo-above-text slide is inevitably taller than a phone screen.
+ */
+.story {
+    position: relative;
+    height: clamp(23rem, 68vh, 33rem);
+    height: clamp(23rem, 68dvh, 33rem);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* A phone held sideways is shorter than the clamp's floor, so the floor comes down with it —
+   still one fixed height for both slides, just a smaller one. */
+@media (max-height: 560px) {
+    .story {
+        height: 20rem;
+    }
+}
+
+.story-art {
+    position: absolute;
+    inset: 0;
+    background: var(--sn-surface-2);
+}
+
+.story-art img {
+    width: 100%;
     height: 100%;
-}
-
-.dining-card h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: .2rem;
-}
-
-.dining-card .kind {
+    object-fit: cover;
     display: block;
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .07em;
+}
+
+/* Legibility over the photograph. Darkest where the words sit, clearing towards the far edge
+   so the picture is still doing something. */
+.story-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(6, 14, 26, .92), rgba(6, 14, 26, .74));
+}
+
+@media (min-width: 992px) {
+    .story-art::after {
+        background: linear-gradient(100deg, rgba(6, 14, 26, .95) 0%, rgba(6, 14, 26, .86) 46%, rgba(6, 14, 26, .3) 100%);
+    }
+}
+
+.story-copy {
+    position: relative;
+    z-index: 1;
+    max-width: 44rem;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    /* Clears the carousel's own indicators, which sit over the bottom of the slide. */
+    padding-bottom: clamp(2.75rem, 5vw, 3.25rem);
+    color: #fff;
+}
+
+.story-copy .section-label {
     color: var(--sn-accent);
+}
+
+.story-copy h2 {
+    font-size: clamp(1.4rem, 2.8vw, 2.1rem);
     font-weight: 700;
-    margin-bottom: .6rem;
+    letter-spacing: -.02em;
+    margin-bottom: .8rem;
+    color: #fff;
 }
 
-.dining-card p {
-    color: var(--sn-text-muted);
-    font-size: .9rem;
-    margin-bottom: .75rem;
+.story-copy p {
+    color: rgba(255, 255, 255, .84);
+    font-size: clamp(.9rem, 1.1vw, 1rem);
+    margin-bottom: .8rem;
 }
 
-.dining-card .hours {
-    font-size: .82rem;
-    color: var(--sn-text-muted);
-    border-top: 1px solid var(--sn-border);
-    padding-top: .6rem;
+.story-copy p:last-child {
+    margin-bottom: 0;
+}
+
+.policy-list {
+    list-style: none;
+    padding: 0;
     margin: 0;
+    display: grid;
+    gap: .55rem;
+}
+
+.policy-list li {
+    display: flex;
+    gap: .65rem;
+    align-items: start;
+    font-size: clamp(.84rem, 1vw, .95rem);
+    line-height: 1.45;
+    color: rgba(255, 255, 255, .84);
+}
+
+.policy-list svg {
+    flex: 0 0 auto;
+    margin-top: .3rem;
+    color: var(--sn-accent);
+}
+
+/*
+ * Bootstrap's arrows are a full-height invisible strip either side, which on this slide covers
+ * the words and swallows their clicks. Shrunk to a pair of buttons pinned bottom-right, clear
+ * of the copy at every width.
+ */
+.story-carousel .carousel-control-prev,
+.story-carousel .carousel-control-next {
+    top: auto;
+    bottom: 1rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .16);
+    border: 1px solid rgba(255, 255, 255, .3);
+    opacity: 1;
+    transition: background-color .2s ease;
+}
+
+.story-carousel .carousel-control-prev {
+    left: auto;
+    right: 4rem;
+}
+
+.story-carousel .carousel-control-next {
+    right: 1rem;
+}
+
+.story-carousel .carousel-control-prev:hover,
+.story-carousel .carousel-control-next:hover,
+.story-carousel .carousel-control-prev:focus-visible,
+.story-carousel .carousel-control-next:focus-visible {
+    background: rgba(255, 255, 255, .32);
+}
+
+.story-carousel .carousel-control-prev-icon,
+.story-carousel .carousel-control-next-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Left-aligned under the copy, since the arrows now own the bottom-right corner. */
+.story-carousel .carousel-indicators {
+    justify-content: start;
+    margin-left: clamp(1.5rem, 4vw, 3rem);
+    margin-right: 7.5rem;
+    margin-bottom: 1.6rem;
+}
+
+.story-carousel .carousel-indicators [data-bs-target] {
+    width: 1.75rem;
+    height: 3px;
+    border-radius: 2px;
+    border: 0;
+    background-color: rgba(255, 255, 255, .4);
+    opacity: 1;
+}
+
+.story-carousel .carousel-indicators .active {
+    background-color: var(--sn-accent);
 }
 
 /* ---------------------------------------------------------- facilities ---- */
@@ -993,7 +1349,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .site-footer {
     border-top: 1px solid var(--sn-border);
-    padding: clamp(1.5rem, 4vw, 2.5rem) 0;
+    background: var(--sn-surface-2);
+    padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(1.25rem, 2vw, 1.75rem);
     color: var(--sn-text-muted);
     font-size: .875rem;
 }
@@ -1001,10 +1358,72 @@ h1, h2, h3, h4, h5, h6 {
 .site-footer a {
     color: var(--sn-text-muted);
     text-decoration: none;
+    transition: color .2s ease;
 }
 
 .site-footer a:hover {
     color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .site-footer a:hover {
+    color: var(--sn-accent);
+}
+
+/* The brand column takes roughly twice the width of each link column. */
+.footer-grid {
+    display: grid;
+    gap: clamp(1.75rem, 4vw, 3rem);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+    .footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .footer-grid {
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+    }
+}
+
+.footer-brand p {
+    max-width: 34ch;
+    margin-bottom: 0;
+}
+
+.footer-tagline {
+    color: var(--sn-accent);
+    font-weight: 600;
+    margin: .5rem 0 .75rem;
+}
+
+.footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    align-items: start;
+}
+
+.footer-col h4 {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--bs-body-color);
+    margin-bottom: .35rem;
+}
+
+.footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-top: clamp(2rem, 4vw, 3rem);
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--sn-border);
+    font-size: .82rem;
 }
 
 /* Users who prefer reduced motion get no hover lift or scroll smoothing. */
@@ -1012,12 +1431,33 @@ h1, h2, h3, h4, h5, h6 {
     html {
         scroll-behavior: auto;
     }
+
+    .room-card,
+    .room-photo img,
+    .dining-tile,
+    .dining-tile img,
+    .dining-veil p {
+        transition: none;
+    }
+
+    .room-card:hover,
+    .dining-tile:hover,
+    .dining-tile:focus-visible {
+        transform: none;
+    }
+
+    .room-card:hover .room-photo img,
+    .dining-tile:hover img,
+    .dining-tile:focus-visible img {
+        transform: none;
+    }
 }
 
 /* -------------------------------------------------------------- login ---- */
 
 .login-bg {
     min-height: 100vh;
+    min-height: 100dvh;
     background: linear-gradient(135deg, var(--sn-sidebar-bg), var(--sn-brand));
     display: flex;
     align-items: center;
