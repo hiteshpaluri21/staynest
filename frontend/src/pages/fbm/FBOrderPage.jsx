@@ -50,7 +50,7 @@ export default function FBOrderPage() {
           guestName: guest?.name ?? `Guest #${s.guestId}`,
           roomLabel: roomNumbers[s.assignedRoomId] != null
             ? `Room ${roomNumbers[s.assignedRoomId]}`
-            : `Room #${s.assignedRoomId}`,
+            : `Room ${s.assignedRoomId}`,
         }
       }))
       setActiveStays(named)
@@ -124,7 +124,7 @@ export default function FBOrderPage() {
                     <option value="">Select a checked-in guest…</option>
                     {activeStays.map(s => (
                       <option key={s.stayId} value={s.stayId}>
-                        {s.guestName} — {s.roomLabel} (Stay #{s.stayId})
+                        {s.guestName} — {s.roomLabel} (Stay {s.stayId})
                       </option>
                     ))}
                   </Form.Select>
@@ -162,6 +162,7 @@ export default function FBOrderPage() {
             </Card.Body>
           </Card>
         </Col>
+
         <Col md={7}>
           <Card className="shadow-sm">
             <Card.Header><strong>Active Orders</strong></Card.Header>
@@ -173,8 +174,8 @@ export default function FBOrderPage() {
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.orderId}>
-                        <td>#{o.orderId}</td>
-                        <td className="small">{stayLabels[o.stayId] ?? `Stay #${o.stayId}`}</td>
+                        <td>{o.orderId}</td>
+                        <td className="small">{stayLabels[o.stayId] ?? `Stay ${o.stayId}`}</td>
                         <td><Badge bg="info">{o.orderType}</Badge></td>
                         <td className="small">
                           {o.items && o.items.length
