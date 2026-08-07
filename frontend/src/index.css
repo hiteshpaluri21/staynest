@@ -431,6 +431,46 @@ h1, h2, h3, h4, h5, h6 {
     vertical-align: middle;
 }
 
+/* Footer strip under a paged table: row count on the left, pager on the right.
+   The rule reads as the bottom edge of the table, so the buttons no longer float
+   loose against the last row. On a narrow screen the two halves stack and the
+   pager keeps its own line rather than wrapping mid-control. */
+.table-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-top: 1rem;
+    padding-top: .85rem;
+    border-top: 1px solid var(--sn-border);
+}
+
+.pager-controls {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+/* Keeps "Page 1 of 8" from jittering the buttons as the digit count changes. */
+.pager-controls>span {
+    min-width: 8ch;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* The chevrons are decoration next to the label, not the hit target. */
+.pager-controls .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    white-space: nowrap;
+}
+
+.pager-controls .btn svg {
+    font-size: .7em;
+}
+
 /* ----------------------------------------------------------- buttons ---- */
 
 /* <Button> with no variant renders btn-primary, which is how the brand button

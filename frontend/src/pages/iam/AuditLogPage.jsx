@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Card, Table, Badge, Form, Button, Row, Col } from 'react-bootstrap'
-import { FaSyncAlt, FaUndo } from 'react-icons/fa'
+import { FaSyncAlt, FaUndo, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { getAuditLogs, getAuditLogsByAction, getAuditLogsByUser, getAuditLogsByRange } from '../../services/iam/auditLogService'
 import { getUsers } from '../../services/iam/userService'
 import Loader from '../../components/Loader'
@@ -105,6 +105,13 @@ export default function AuditLogPage() {
   const totalPages = clientPaged ? Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)) : serverPages
   const visible = clientPaged ? filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) : filtered
 
+  // Only the client-paged path knows the grand total; the server sends one page at a time.
+  const firstOnPage = page * PAGE_SIZE + 1
+  const lastOnPage = page * PAGE_SIZE + visible.length
+  const shownRange = clientPaged
+    ? `Showing ${firstOnPage}–${lastOnPage} of ${filtered.length}`
+    : `Showing ${firstOnPage}–${lastOnPage}`
+
   const apply = () => { setPage(0); setApplied(draft) }
   const reset = () => { setPage(0); setDraft(EMPTY_FILTERS); setApplied(EMPTY_FILTERS) }
   const refresh = () => { setApplied({ ...applied }) }
@@ -170,7 +177,7 @@ export default function AuditLogPage() {
             error ? <div className="alert alert-danger">{error}</div> :
               visible.length === 0 ? <EmptyState message="No audit entries match these filters" /> :
                 <>
-                  <Table hover responsive className="align-middle">
+                  <Table hover responsive className="align-middle mb-0">
                     <thead>
                       <tr>
                         <th>ID</th><th>When</th><th>User</th><th>Role</th><th>Action</th><th>Entity</th><th>Entity ID</th>
@@ -194,11 +201,26 @@ export default function AuditLogPage() {
                     </tbody>
                   </Table>
 
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="small text-muted">Page {page + 1} of {totalPages}</span>
-                    <div className="d-flex gap-2">
-                      <Button size="sm" variant="outline-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button>
-                      <Button size="sm" variant="outline-secondary" disabled={page + 1 >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+                  <div className="table-pager">
+                    <span className="small text-muted">{shownRange}</span>
+                    <div className="pager-controls">
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        disabled={page === 0}
+                        onClick={() => setPage(page - 1)}
+                      >
+                        <FaChevronLeft aria-hidden="true" /> Previous
+                      </Button>
+                      <span className="small text-muted">Page {page + 1} of {totalPages}</span>
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        disabled={page + 1 >= totalPages}
+                        onClick={() => setPage(page + 1)}
+                      >
+                        Next <FaChevronRight aria-hidden="true" />
+                      </Button>
                     </div>
                   </div>
                 </>
