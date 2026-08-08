@@ -15,8 +15,7 @@ import com.staynest.reservation.repository.ReservationRepository;
 import com.staynest.reservation.service.GuestUserResolver;
 import com.staynest.reservation.service.ReservationService;
 import feign.FeignException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,10 +32,9 @@ import com.staynest.reservation.enums.LoyaltyTier;
 import java.util.Map;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+@Slf4j
 @Service
 public class ReservationServiceImpl implements ReservationService {
-
-	private static final Logger log = LoggerFactory.getLogger(ReservationServiceImpl.class);
 
 	/** entityType recorded in audit_logs for everything in this service. */
 	private static final String ENTITY = "RESERVATION";

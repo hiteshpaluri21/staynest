@@ -12,8 +12,7 @@ import com.staynest.reservation.exception.ResourceNotFoundException;
 import com.staynest.reservation.repository.GuestProfileRepository;
 import com.staynest.reservation.service.GuestProfileService;
 import com.staynest.reservation.service.GuestUserResolver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +23,7 @@ import com.staynest.reservation.client.IamServiceClient;
 import java.util.Map;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+@Slf4j
 @Service
 public class GuestProfileServiceImpl implements GuestProfileService {
 
@@ -32,8 +32,6 @@ public class GuestProfileServiceImpl implements GuestProfileService {
 
     @Autowired
     private AuditRecorder auditRecorder;
-
-    private static final Logger log = LoggerFactory.getLogger(GuestProfileServiceImpl.class);
 
     @Autowired
     private GuestProfileRepository guestProfileRepository;

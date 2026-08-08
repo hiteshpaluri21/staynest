@@ -1,13 +1,17 @@
 package com.staynest.room.serviceimpl;
 
+import com.staynest.room.audit.AuditRecorder;
 import com.staynest.room.client.ReservationServiceClient;
 import com.staynest.room.dto.ApiResponse;
+import com.staynest.room.dto.RoomRequest;
 import com.staynest.room.dto.RoomResponse;
 import com.staynest.room.entity.Room;
 import com.staynest.room.entity.RoomType;
 import com.staynest.room.enums.RoomStatus;
 import com.staynest.room.enums.RoomTypeName;
+import com.staynest.room.exception.BadRequestException;
 import com.staynest.room.repository.RoomRepository;
+import com.staynest.room.repository.RoomTypeRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,21 +21,26 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The advertised count of free rooms must fall by exactly one per booking, and stay there as
- * that booking moves from CONFIRMED to CHECKEDIN.
+ * Adding rooms and moving them between statuses, plus the availability arithmetic.
  *
- * It used to fall twice: the room left the AVAILABLE pool when check-in turned it OCCUPIED,
- * while its reservation still counted against the same room type.
+ * The availability half exists because the advertised count of free rooms must fall by exactly
+ * one per booking, and stay there as that booking moves from CONFIRMED to CHECKEDIN. It used to
+ * fall twice: the room left the AVAILABLE pool when check-in turned it OCCUPIED, while its
+ * reservation still counted against the same room type.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -42,6 +51,8 @@ class RoomServiceImplTest {
     private static final String CHECK_OUT = "2026-09-12";
 
     @Mock private RoomRepository roomRepository;
+    @Mock private RoomTypeRepository roomTypeRepository;
+    @Mock private AuditRecorder auditRecorder;
     @Mock private ReservationServiceClient reservationServiceClient;
     @InjectMocks private RoomServiceImpl service;
 
@@ -83,6 +94,70 @@ class RoomServiceImplTest {
         List<RoomResponse> free = service.getAvailableRooms(CHECK_IN, CHECK_OUT);
         return free.size();
     }
+
+    // ------------------------------------------------------- adding and statuses --
+
+    private static RoomRequest addRequest() {
+        RoomRequest req = new RoomRequest();
+        req.setRoomNumber("104");
+        req.setFloor(1);
+        req.setRoomTypeId(DELUXE);
+        return req;
+    }
+
+    @Test
+    void addRoom_validRoomType() {
+        when(roomTypeRepository.findById(DELUXE)).thenReturn(Optional.of(deluxe()));
+        when(roomRepository.existsByRoomNumber("104")).thenReturn(false);
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> {
+            Room r = inv.getArgument(0);
+            r.setRoomId(4);
+            return r;
+        });
+
+        RoomResponse created = service.addRoom(addRequest());
+
+        assertThat(created.getRoomNumber()).isEqualTo("104");
+        assertThat(created.getRoomTypeId()).isEqualTo(DELUXE);
+        // A new room joins the sellable pool rather than inheriting a status from the request.
+        assertThat(created.getStatus()).isEqualTo(RoomStatus.AVAILABLE);
+        verify(auditRecorder).record("CREATE", "ROOM", 4);
+    }
+
+    @Test
+    void addRoom_invalidRoomType_throwsException() {
+        when(roomTypeRepository.findById(DELUXE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.addRoom(addRequest()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Invalid RoomTypeId");
+
+        verify(roomRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRoomStatus_changes() {
+        when(roomRepository.findById(1)).thenReturn(Optional.of(room(1, RoomStatus.AVAILABLE)));
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RoomResponse updated = service.updateRoomStatus(1, RoomStatus.MAINTENANCE);
+
+        assertThat(updated.getStatus()).isEqualTo(RoomStatus.MAINTENANCE);
+        verify(auditRecorder).record("UPDATE_STATUS", "ROOM", 1);
+    }
+
+    @Test
+    void getRoomsByStatus_returnsCorrect() {
+        when(roomRepository.findByStatus(RoomStatus.CLEANING))
+                .thenReturn(List.of(room(2, RoomStatus.CLEANING), room(3, RoomStatus.CLEANING)));
+
+        List<RoomResponse> cleaning = service.getRoomsByStatus(RoomStatus.CLEANING);
+
+        assertThat(cleaning).hasSize(2)
+                .allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(RoomStatus.CLEANING));
+    }
+
+    // ------------------------------------------------------------- availability --
 
     @Test
     void withNothingBookedEveryRoomIsFree() {

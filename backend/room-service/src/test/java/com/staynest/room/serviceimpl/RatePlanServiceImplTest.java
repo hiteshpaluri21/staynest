@@ -87,7 +87,7 @@ class RatePlanServiceImplTest {
     // ------------------------------------------------------------------- creating --
 
     @Test
-    void aNonOverlappingPlanIsCreated() {
+    void createRatePlan_valid() {
         roomTypeExists();
         overlapsFound(List.of());
         when(ratePlanRepository.save(any(RatePlan.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -152,6 +152,27 @@ class RatePlanServiceImplTest {
         req.setMealPlanIncluded(null);
 
         assertThat(service.createRatePlan(req).getMealPlanIncluded()).isFalse();
+    }
+
+    // ------------------------------------------------------------------- querying --
+
+    /**
+     * The lookup availability search uses: only ACTIVE plans for the room type whose validity
+     * window contains the night being priced.
+     */
+    @Test
+    void getActivePlansForDate_returnsCorrect() {
+        LocalDate stayDate = LocalDate.parse("2026-06-15");
+        when(ratePlanRepository
+                .findByRoomType_RoomTypeIdAndStatusAndValidFromLessThanEqualAndValidToGreaterThanEqual(
+                        2, RatePlanStatus.ACTIVE, stayDate, stayDate))
+                .thenReturn(List.of(plan(9, "2026-06-01", "2026-06-30")));
+
+        var active = service.getActivePlansForRoomType(2, stayDate);
+
+        assertThat(active).hasSize(1);
+        assertThat(active.get(0).getRatePlanId()).isEqualTo(9);
+        assertThat(active.get(0).getStatus()).isEqualTo(RatePlanStatus.ACTIVE);
     }
 
     // -------------------------------------------------------------------- editing --

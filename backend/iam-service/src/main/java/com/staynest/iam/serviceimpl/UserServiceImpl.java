@@ -10,8 +10,7 @@ import com.staynest.iam.exception.ResourceNotFoundException;
 import com.staynest.iam.repository.UserRepository;
 import com.staynest.iam.service.AuditLogService;
 import com.staynest.iam.service.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,10 +20,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import com.staynest.iam.enums.Role;
 
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
-
-    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Autowired
     private UserRepository userRepository;
