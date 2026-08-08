@@ -1,7 +1,6 @@
 package com.staynest.room.dto;
 
 import com.staynest.room.enums.RoomStatus;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

@@ -2,7 +2,6 @@ package com.staynest.reservation.dto;
 
 import com.staynest.reservation.enums.BookingChannel;
 import com.staynest.reservation.enums.ReservationStatus;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

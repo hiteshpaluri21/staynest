@@ -3,7 +3,6 @@ package com.staynest.frontdesk.dto;
 import com.staynest.frontdesk.enums.StayStatus;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

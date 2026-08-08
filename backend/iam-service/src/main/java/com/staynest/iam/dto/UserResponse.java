@@ -2,7 +2,6 @@ package com.staynest.iam.dto;
 
 import com.staynest.iam.enums.Role;
 import com.staynest.iam.enums.UserStatus;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

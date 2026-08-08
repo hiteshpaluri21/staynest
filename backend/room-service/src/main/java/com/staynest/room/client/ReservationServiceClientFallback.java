@@ -6,8 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
 
 /**
  * Best-effort fallback for {@link ReservationServiceClient}. Availability

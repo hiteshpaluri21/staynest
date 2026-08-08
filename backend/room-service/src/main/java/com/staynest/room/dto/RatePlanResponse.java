@@ -2,7 +2,6 @@ package com.staynest.room.dto;
 
 import com.staynest.room.enums.RatePlanName;
 import com.staynest.room.enums.RatePlanStatus;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
